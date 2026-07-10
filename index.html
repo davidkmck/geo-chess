@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#14130f">
+<title>Big Board Chess — 14×14</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <h1>Big Board <span class="accent">Chess</span></h1>
+    <p class="subtitle">14×14 board · same pieces · no terrain yet</p>
+  </header>
+
+  <main>
+    <div class="status-bar">
+      <span id="turnIndicator" class="turn-pill turn-w">White to move</span>
+      <button id="resetBtn" class="btn-reset" aria-label="Reset board">Reset</button>
+    </div>
+
+    <div class="board-outer">
+      <div class="ranks" id="ranks"></div>
+      <div class="board" id="board"></div>
+      <div class="corner"></div>
+      <div class="files" id="files"></div>
+    </div>
+
+    <p class="hint">Tap a piece, then tap a highlighted square to move it.</p>
+
+    <div class="history-panel">
+      <div class="history-controls">
+        <button id="undoBtn" class="btn-ghost" disabled>&#8592; Undo</button>
+        <button id="redoBtn" class="btn-ghost" disabled>Redo &#8594;</button>
+      </div>
+      <p class="history-label">Move history — tap any entry to jump there</p>
+      <ol id="moveLog" class="move-log"></ol>
+    </div>
+  </main>
+
+  <div id="winOverlay" class="win-overlay hidden">
+    <div class="win-card">
+      <p class="win-title" id="winMessage">White wins</p>
+      <p class="win-sub">The king was captured.</p>
+      <button id="playAgainBtn" class="btn-reset">Play again</button>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>

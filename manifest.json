@@ -1,0 +1,15 @@
+{
+  "name": "Big Board Chess",
+  "short_name": "BigChess",
+  "description": "A 14x14 chess variant played on an oversized board — same pieces, same rules, more room to maneuver.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14130f",
+  "theme_color": "#14130f",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
