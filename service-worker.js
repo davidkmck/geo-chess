@@ -1,4 +1,4 @@
-const CACHE_NAME = "bigboard-chess-v2";
+const CACHE_NAME = "bigboard-chess-v4";
 const ASSETS = [
   "./",
   "./index.html",

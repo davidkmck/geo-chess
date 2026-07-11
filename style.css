@@ -146,6 +146,52 @@ main {
   filter: brightness(1.08);
 }
 
+.ai-panel {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.82rem;
+}
+
+.ai-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ai-toggle input {
+  accent-color: var(--gold);
+  width: 15px;
+  height: 15px;
+}
+
+.ai-select {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+
+.ai-thinking {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--gold);
+  letter-spacing: 0.02em;
+}
+
+.ai-thinking.hidden {
+  display: none;
+}
+
 .board-outer {
   width: 100%;
   max-width: 600px;
@@ -215,6 +261,16 @@ main {
 .cell.light { background: var(--light-sq); }
 .cell.dark { background: var(--dark-sq); }
 
+.cell.home-rank.light,
+.cell.home-rank.dark {
+  box-shadow: inset 0 0 0 999px rgba(79, 145, 135, 0.10);
+}
+
+.cell.terrain-mountain { background: #8a8578; }
+.cell.terrain-river { background: #6fa8d8; }
+.cell.terrain-lake { background: #2f6fa8; }
+.cell.terrain-ford { background: #a9d8e8; }
+
 .cell.selected::before {
   content: "";
   position: absolute;
@@ -279,6 +335,29 @@ main {
   font-size: 0.8rem;
   color: var(--text-muted);
   text-align: center;
+}
+
+.legend {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: center;
+  text-align: center;
+}
+
+.legend .swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  margin-right: 3px;
+  vertical-align: -1px;
+  border: 0.5px solid rgba(0,0,0,0.3);
 }
 
 .history-panel {

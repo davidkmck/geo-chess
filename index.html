@@ -26,6 +26,19 @@
       <button id="resetBtn" class="btn-reset" aria-label="Reset board">Reset</button>
     </div>
 
+    <div class="ai-panel">
+      <label class="ai-toggle">
+        <input type="checkbox" id="aiToggle">
+        AI opponent (plays Black)
+      </label>
+      <select id="aiDifficulty" class="ai-select">
+        <option value="1">Easy</option>
+        <option value="2" selected>Medium</option>
+        <option value="3">Hard (slower)</option>
+      </select>
+      <span id="aiThinking" class="ai-thinking hidden">Thinking…</span>
+    </div>
+
     <div class="board-outer">
       <div class="ranks" id="ranks"></div>
       <div class="board" id="board"></div>
@@ -33,7 +46,13 @@
       <div class="files" id="files"></div>
     </div>
 
-    <p class="hint">Tap a piece, then tap a highlighted square to move it.</p>
+    <p class="hint">Tap a piece, then tap a highlighted square to move it. Drag also works.</p>
+
+    <ul class="legend">
+      <li><span class="swatch" style="background:#8a8578"></span>Mountain — impassable (knights may jump over, never land)</li>
+      <li><span class="swatch" style="background:#6fa8d8"></span>River / <span class="swatch" style="background:#2f6fa8"></span>Lake — wade one square per turn, can't attack while mid-crossing</li>
+      <li><span class="swatch" style="background:#a9d8e8"></span>Bridge — crosses freely, no restriction</li>
+    </ul>
 
     <div class="history-panel">
       <div class="history-controls">
