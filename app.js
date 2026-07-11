@@ -51,15 +51,56 @@
         if (!p) return [];
         let targets = [];
         
-        // Rule: If current terrain is slow (Forest/River), move only 1 square (except Knight)
+        // Rule: Forest/River restricts non-knights to 1 square
         const isRestricted = isSlowTerrain(board[r][f].terrain) && p.type !== 'n';
 
-        // ... (Insert standard movement logic here, filtering for isRestricted)
-        // Ensure you add the check:
-        // if (isRestricted) { /* limit distance to 1 square */ }
-        
+        if (p.type === "p") {
+            let dir = p.color === "w" ? -1 : 1;
+            let nr = r + dir;
+            // Move forward
+            if (nr >= 0 && nr < SIZE && !board[nr][f].piece && board[nr][f].terrain !== 1 && board[nr][f].terrain !== 4) {
+                targets.push({ r: nr, f: f });
+            }
+        } else if (p.type === "n") {
+            const offsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+            offsets.forEach(o => {
+                let nr = r + o[0], nf = f + o[1];
+                if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
+                    if (board[nr][nf].terrain !== 1 && board[nr][nf].terrain !== 4) {
+                        if (!board[nr][nf].piece || board[nr][nf].piece.color !== p.color) {
+                            targets.push({ r: nr, f: nf });
+                        }
+                    }
+                }
+            });
+        } else {
+            // Sliding Pieces (R, B, Q)
+            const dirs = p.type === 'r' ? [[1,0],[-1,0],[0,1],[0,-1]] : 
+                         p.type === 'b' ? [[1,1],[1,-1],[-1,1],[-1,-1]] :
+                         [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+            
+            dirs.forEach(d => {
+                let nr = r + d[0], nf = f + d[1];
+                while (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
+                    let cell = board[nr][nf];
+                    if (cell.terrain === 1 || cell.terrain === 4) break; // Walls/Lakes
+                    
+                    if (!cell.piece) {
+                        targets.push({ r: nr, f: nf });
+                    } else if (cell.piece.color !== p.color) {
+                        targets.push({ r: nr, f: nf });
+                        break; // Stop after capture
+                    } else break; // Own piece
+
+                    if (isRestricted) break; // Enforce 1-square limit
+                    nr += d[0]; nf += d[1];
+                }
+            });
+        }
         return targets;
     }
+
+  
 
     function drawBoard() {
         const boardEl = document.getElementById("board");
