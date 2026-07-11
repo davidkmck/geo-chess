@@ -1,4 +1,4 @@
-(function () {
+(function () {  // 6:37 2026-07-11
     "use strict";
 
     // ==========================================================================
@@ -52,18 +52,17 @@
     // ==========================================================================
     // 2. Visual Terrain Biome Designer
     // ==========================================================================
-    // Legend: p = plain, M = mountain, F = forest, L = lake, r = river, f = ford
     const TERRAIN_LAYOUT = [
         "pppppppppppppp", // 0
         "pppppppppppppp", // 1
         "pppppppppppppp", // 2
-        "ppMMFFpppppppp", // 3 (Mountain connected to Forest)
-        "ppMMFFLLpppppp", // 4 (Forest flowing into Lake)
+        "ppMMFFpppppppp", // 3 
+        "ppMMFFLLpppppp", // 4 
         "ppppppLLpppppp", // 5 
-        "rrrfrrrppppppp", // 6 (S-Curve River top half + Bridge)
-        "pppppprrrrrrfr", // 7 (S-Curve River bottom half + Bridge)
+        "rrrfrrrppppppp", // 6 
+        "pppppprrrrrrfr", // 7 
         "ppppppLLpppppp", // 8 
-        "ppppppLLFFMMpp", // 9 (Symmetrical layout in White territory)
+        "ppppppLLFFMMpp", // 9 
         "ppppppppFFMMpp", // 10
         "pppppppppppppp", // 11
         "pppppppppppppp", // 12
@@ -80,11 +79,22 @@
     }
 
     function isWater(t) { return t === "river" || t === "lake"; }
-    function isImpassable(t) { return t === "mountain" || t === "forest"; }
-    function isHomeRank(r) { return r <= 1 || r >= SIZE - 2; }
-    function canCapture(fromTerrain, toTerrain) {
-        return !(isWater(fromTerrain) && isWater(toTerrain));
+    function isForest(t) { return t === "forest"; }
+    function isSlow(t) { return isWater(t) || isForest(t); }
+    function isImpassable(t) { return t === "mountain"; } // Forests are no longer impassable
+
+    function canCapture(tFrom, tTo) {
+        // WATER COMBAT: Dry piece can attack Wet piece. Wet piece cannot attack Dry piece.
+        if (isWater(tFrom) && !isWater(tTo)) return false;
+        if (isWater(tFrom) && isWater(tTo)) return false; // Wet cannot attack Wet
+
+        // FOREST COMBAT: Inside can attack Outside. Outside cannot attack Inside.
+        if (!isForest(tFrom) && isForest(tTo)) return false;
+
+        return true;
     }
+
+    function isHomeRank(r) { return r <= 1 || r >= SIZE - 2; }
 
     // ==========================================================================
     // 3. Board Initialization & Deep Cloning Tools
@@ -145,7 +155,8 @@
                 if (!bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
                     moves.push({ r: nr, f: f });
                     const nnr = r + (2 * dir);
-                    if (r === startRank && !bMatrix[nnr][f] && !isImpassable(terrain(nnr, f))) {
+                    // Prevent double step if starting in slow terrain, or if the intermediate square is slow
+                    if (r === startRank && !isSlow(tFrom) && !isSlow(terrain(nr, f)) && !bMatrix[nnr][f] && !isImpassable(terrain(nnr, f))) {
                         moves.push({ r: nnr, f: f });
                     }
                 }
@@ -179,13 +190,16 @@
                     const tgt = bMatrix[curR][curF];
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
-                        if (isWater(tTo) && tTo !== "ford") break; 
+                        if (isSlow(tTo) && tTo !== "ford") break; // Stop after entering slow terrain
                     } else {
                         if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
                             moves.push({ r: curR, f: curF });
                         }
                         break;
                     }
+
+                    if (isSlow(tFrom) && tFrom !== "ford") break; // Only allowed 1 step if starting in slow terrain
+                    
                     curR += dr;
                     curF += df;
                 }
@@ -572,11 +586,9 @@
                 if (!isPanning) return;
                 let scaleFactor = [1.0, 1.75, 3.5][zoomPreset - 1] || 1.0;
                 
-                // Track 1:1 with mouse movement
                 panX = startPanX + (e.clientX - startMouseX) / scaleFactor;
                 panY = startPanY + (e.clientY - startMouseY) / scaleFactor;
                 
-                // Dynamic boundary detection based on actual scale
                 const w = document.getElementById("board").offsetWidth;
                 const h = document.getElementById("board").offsetHeight;
                 const maxPanX = (w * scaleFactor - w) / (2 * scaleFactor);
