@@ -1,4 +1,4 @@
-const CACHE_NAME = "geo-chess-v4"; // Increment this version string whenever you push new updates!
+const CACHE_NAME = "geo-chess-v5"; // Increment this version string whenever you push new updates!
 const ASSETS = [
   "./",
   "./index.html",
