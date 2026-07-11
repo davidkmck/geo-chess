@@ -98,6 +98,13 @@
         return targets;
     }
 
+    function executeMove(sr, sf, tr, tf) {
+        board[tr][tf].piece = board[sr][sf].piece;
+        board[sr][sf].piece = null;
+        turn = turn === "w" ? "b" : "w";
+        drawBoard();
+    }
+
     function drawBoard() {
         const boardEl = document.getElementById("board");
         if (!boardEl) return;
@@ -108,6 +115,9 @@
                 cellEl.dataset.row = r; cellEl.dataset.file = f;
                 const terrainTypes = ["plain", "mountain", "forest", "river", "lake", "ford"];
                 cellEl.className = `cell ${(r+f)%2===0 ? 'light':'dark'} terrain-${terrainTypes[board[r][f].terrain]}`;
+                if (selected && selected.r === r && selected.f === f) cellEl.classList.add("selected");
+                if (legalTargets.some(t => t.r === r && t.f === f)) cellEl.classList.add("legal-move");
+                
                 if (board[r][f].piece) {
                     const pEl = document.createElement("span");
                     pEl.className = `piece ${board[r][f].piece.color}`;
@@ -120,7 +130,20 @@
         }
     }
 
-    function handleCellClick(e) { /* existing logic */ }
+    function handleCellClick(e) {
+        const r = parseInt(e.currentTarget.dataset.row);
+        const f = parseInt(e.currentTarget.dataset.file);
+        if (selected && legalTargets.some(t => t.r === r && t.f === f)) {
+            executeMove(selected.r, selected.f, r, f);
+            selected = null; legalTargets = [];
+        } else if (board[r][f].piece && board[r][f].piece.color === turn) {
+            selected = { r, f };
+            legalTargets = calculateLegalMoves(r, f);
+        } else {
+            selected = null; legalTargets = [];
+        }
+        drawBoard();
+    }
 
     function init() { 
         setupInitialBoardState(); 
