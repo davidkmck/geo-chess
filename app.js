@@ -178,14 +178,17 @@
                     }
                 }
             });
-        } 
-        else if (["R", "B", "Q"].includes(p.type)) {
+        } //
+            
+    else if (["R", "B", "Q"].includes(p.type)) {
             const dirs = directions[p.type];
             dirs.forEach(([dr, df]) => {
                 let curR = r + dr;
                 let curF = f + df;
-                // Track if we are starting in water
+                
+                // Track if the starting square is water
                 const startingInWater = isWater(tFrom);
+
                 while (curR >= 0 && curR < SIZE && curF >= 0 && curF < SIZE) {
                     const tTo = terrain(curR, curF);
                     if (isImpassable(tTo)) break;
@@ -193,10 +196,13 @@
                     const tgt = bMatrix[curR][curF];
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
-                        // Rule: If exiting water, stop after one square
-                        if (startingInWater) break;
-                        // Blockade: Stop sliding on forest or water
-                        if (isWater(tTo) || isForest(tTo)) break; 
+                        
+                        // Rule: If starting in water OR moving into water, 
+                        // sliding pieces (R, B, Q) are restricted to one square.
+                        if (startingInWater || isWater(tTo)) break;
+                        
+                        // Blockade: Stop sliding on forest
+                        if (isForest(tTo)) break; 
                     } else {
                         // Capture logic:
                         if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
