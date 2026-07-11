@@ -718,7 +718,7 @@
         return { score: bestScore, move: bestMove };
     }
 
-    let aiEnabled = false;
+    let aiEnabled = true;
     const aiColor = "b";
     let aiDepth = 2;
     let aiThinking = false;
@@ -938,6 +938,7 @@
     }
 
     if (aiToggle) {
+        aiToggle.checked = true; // by default AI enabled
         aiToggle.addEventListener("change", (e) => {
             aiEnabled = e.target.checked;
             maybeTriggerAI();
