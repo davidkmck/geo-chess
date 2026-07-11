@@ -6,10 +6,9 @@
     let turn = "w";
     let selected = null;
     let legalTargets = [];
-    let gameOver = false;
+    let zoomPreset = 1; // 1 = 14x14, 2 = 8x8, 3 = 4x4
     let aiEnabled = true;
 
-    // 0: Plain, 1: Mountain, 2: Forest, 3: River, 4: Lake, 5: Ford
     const TERRAIN_MAP = [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,1,1,0,0,0,0,2,2,2,0,0,0,0],
@@ -27,6 +26,17 @@
     const TWELVE_ROYALS = ["r", "r", "r", "n", "b", "q", "k", "b", "n", "r", "r", "r"];
 
     function isSlowTerrain(terrainType) { return terrainType === 2 || terrainType === 3; }
+
+    function updateMinimap() {
+        const miniMap = document.getElementById("mini-map");
+        if (!miniMap) return;
+        // Show only if zoomed in
+        if (zoomPreset > 1) {
+            miniMap.classList.remove("hidden");
+        } else {
+            miniMap.classList.add("hidden");
+        }
+    }
 
     function setupInitialBoardState() {
         board = [];
@@ -50,14 +60,11 @@
         const p = board[r][f].piece;
         if (!p) return [];
         let targets = [];
-        
-        // Rule: Forest/River restricts non-knights to 1 square
         const isRestricted = isSlowTerrain(board[r][f].terrain) && p.type !== 'n';
 
         if (p.type === "p") {
             let dir = p.color === "w" ? -1 : 1;
             let nr = r + dir;
-            // Move forward
             if (nr >= 0 && nr < SIZE && !board[nr][f].piece && board[nr][f].terrain !== 1 && board[nr][f].terrain !== 4) {
                 targets.push({ r: nr, f: f });
             }
@@ -66,7 +73,6 @@
             offsets.forEach(o => {
                 let nr = r + o[0], nf = f + o[1];
                 if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
-                    // Knight ONLY respects Mountain (1) and Lake (4) as barriers.
                     if (board[nr][nf].terrain !== 1 && board[nr][nf].terrain !== 4) {
                         if (!board[nr][nf].piece || board[nr][nf].piece.color !== p.color) {
                             targets.push({ r: nr, f: nf });
@@ -75,25 +81,21 @@
                 }
             });
         } else {
-            // Sliding Pieces (R, B, Q)
             const dirs = p.type === 'r' ? [[1,0],[-1,0],[0,1],[0,-1]] : 
                          p.type === 'b' ? [[1,1],[1,-1],[-1,1],[-1,-1]] :
                          [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
-            
             dirs.forEach(d => {
                 let nr = r + d[0], nf = f + d[1];
                 while (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
                     let cell = board[nr][nf];
-                    if (cell.terrain === 1 || cell.terrain === 4) break; // Walls/Lakes
-                    
+                    if (cell.terrain === 1 || cell.terrain === 4) break;
                     if (!cell.piece) {
                         targets.push({ r: nr, f: nf });
                     } else if (cell.piece.color !== p.color) {
                         targets.push({ r: nr, f: nf });
-                        break; // Stop after capture
-                    } else break; // Own piece
-
-                    if (isRestricted) break; // Enforce 1-square limit
+                        break;
+                    } else break;
+                    if (isRestricted) break;
                     nr += d[0]; nf += d[1];
                 }
             });
@@ -109,13 +111,11 @@
             for (let f = 0; f < SIZE; f++) {
                 const cellEl = document.createElement("div");
                 cellEl.dataset.row = r; cellEl.dataset.file = f;
-                
                 const terrainTypes = ["plain", "mountain", "forest", "river", "lake", "ford"];
                 cellEl.className = `cell ${(r+f)%2===0 ? 'light':'dark'} terrain-${terrainTypes[board[r][f].terrain]}`;
-                
                 if (board[r][f].piece) {
                     const pEl = document.createElement("span");
-                    // Use 'w' and 'b' classes to match PIECES object keys
+                    // Using 'w' and 'b' classes for styling
                     pEl.className = `piece ${board[r][f].piece.color}`;
                     pEl.textContent = PIECES[board[r][f].piece.color][board[r][f].piece.type];
                     cellEl.appendChild(pEl);
@@ -126,19 +126,21 @@
         }
     }
 
-    function handleCellClick(e) { /* ... same as before ... */ }
+    function handleCellClick(e) { /* existing logic */ }
+    
     function init() { 
         setupInitialBoardState(); 
         drawBoard(); 
         
-        // Zen Mode listener
         const zenBtn = document.getElementById("btn-zen");
-        if (zenBtn) {
-            zenBtn.addEventListener("click", () => {
-                document.body.classList.toggle("zen-active");
-            });
-        }
+        zenBtn?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
+        
+        const zoom = document.getElementById("zoom-slider");
+        zoom?.addEventListener("input", (e) => {
+            zoomPreset = parseInt(e.target.value);
+            updateMinimap();
+        });
+        updateMinimap();
     }
-    
     document.addEventListener("DOMContentLoaded", init);
 })();
