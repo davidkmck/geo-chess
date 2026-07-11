@@ -216,102 +216,6 @@
     const miniMapEl = document.getElementById("miniMap");
     const miniMapViewportEl = document.getElementById("miniMapViewport");
 
-    // ---- Dynamic Layout & CSS Fix Patch Engine ----
-    const stylePatch = document.createElement("style");
-    stylePatch.textContent = `
-        /* Hyper-compact header panel grouping for maximum mobile space */
-        header, .controls-header, .top-control-panel {
-            padding: 4px 8px !important;
-            margin-bottom: 6px !important;
-            gap: 6px !important;
-            min-height: auto !important;
-        }
-        .btn-ghost, #resetBtn, #undoBtn, #redoBtn {
-            padding: 4px 8px !important;
-            font-size: 13px !important;
-        }
-        
-        /* Layout fix for board and left side control column alignment */
-        .board-container-wrapper {
-            display: flex !important;
-            flex-direction: row !important;
-            align-items: center !important;
-            justify-content: center !important;
-            position: relative !important;
-            width: 100%;
-        }
-        
-        .left-control-stack {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            height: 280px !important;
-            margin-right: 14px !important;
-            z-index: 10;
-        }
-        
-        /* Force Vertical Range Slider Properties */
-        .vertical-slider {
-            -webkit-appearance: slider-vertical !important;
-            writing-mode: bt-lr !important;
-            width: 24px !important;
-            height: 140px !important;
-            padding: 0 !important;
-            margin: 6px 0 !important;
-        }
-        
-        /* Board Sizing Reset: Forces grid rows to stretch and fill perfectly */
-        .board-outer {
-            position: relative !important;
-            overflow: hidden !important;
-            background-color: #111 !important;
-            width: 100% !important;
-            max-width: 560px !important;
-            aspect-ratio: 1 / 1 !important;
-        }
-        #board {
-            display: grid !important;
-            grid-template-columns: repeat(14, 1fr) !important;
-            grid-template-rows: repeat(14, 1fr) !important;
-            width: 100% !important;
-            height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        .cell {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 100% !important;
-            height: 100% !important;
-            position: relative !important;
-        }
-        
-        /* Dynamic Turn Widget Styles */
-        .turn-indicator-node {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 2px solid #444;
-            transition: all 0.25s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-        }
-        .turn-indicator-node.white-node { background-color: #ffffff; }
-        .turn-indicator-node.black-node { background-color: #222222; border-color: #888; }
-        .turn-indicator-node.active-glow {
-            transform: scale(1.2);
-            box-shadow: 0 0 14px #ffc107;
-            border-color: #ffc107 !important;
-        }
-        
-        /* Clean Win Overlay Override Isolation */
-        #winOverlay.hidden {
-            display: none !important;
-        }
-    `;
-    document.head.appendChild(stylePatch);
-
     // Build/Restructure Left Control Stack container
     let leftStack = document.querySelector(".left-control-stack");
     if (!leftStack) {
@@ -322,7 +226,7 @@
         }
     }
 
-    // Purge legacy out-of-bounds widget markup instances if found
+    // Purge legacy instances if found
     if (widgetW) widgetW.remove();
     if (widgetB) widgetB.remove();
 
@@ -570,7 +474,7 @@
         ghost.textContent = pieceEl.textContent;
         ghost.style.width = cellRect.width + "px";
         ghost.style.height = cellRect.height + "px";
-        ghost.style.fontSize = cellRect.width * 0.74 + "px";
+        ghost.style.fontSize = (cellRect.width * 0.65) + "px";
         positionGhost(ghost, cellRect, clientX, clientY);
         document.body.appendChild(ghost);
         return ghost;
