@@ -6,7 +6,7 @@
     let turn = "w";
     let selected = null;
     let legalTargets = [];
-    let zoomPreset = 1; // 1 = 14x14, 2 = 8x8, 3 = 4x4
+    let zoomPreset = 1;
     let aiEnabled = true;
 
     const TERRAIN_MAP = [
@@ -30,12 +30,7 @@
     function updateMinimap() {
         const miniMap = document.getElementById("mini-map");
         if (!miniMap) return;
-        // Show only if zoomed in
-        if (zoomPreset > 1) {
-            miniMap.classList.remove("hidden");
-        } else {
-            miniMap.classList.add("hidden");
-        }
+        zoomPreset > 1 ? miniMap.classList.remove("hidden") : miniMap.classList.add("hidden");
     }
 
     function setupInitialBoardState() {
@@ -115,7 +110,6 @@
                 cellEl.className = `cell ${(r+f)%2===0 ? 'light':'dark'} terrain-${terrainTypes[board[r][f].terrain]}`;
                 if (board[r][f].piece) {
                     const pEl = document.createElement("span");
-                    // Using 'w' and 'b' classes for styling
                     pEl.className = `piece ${board[r][f].piece.color}`;
                     pEl.textContent = PIECES[board[r][f].piece.color][board[r][f].piece.type];
                     cellEl.appendChild(pEl);
@@ -127,14 +121,12 @@
     }
 
     function handleCellClick(e) { /* existing logic */ }
-    
+
     function init() { 
         setupInitialBoardState(); 
         drawBoard(); 
-        
         const zenBtn = document.getElementById("btn-zen");
         zenBtn?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
-        
         const zoom = document.getElementById("zoom-slider");
         zoom?.addEventListener("input", (e) => {
             zoomPreset = parseInt(e.target.value);
