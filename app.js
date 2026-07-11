@@ -281,14 +281,29 @@ else if (["R", "B", "Q"].includes(p.type)) {
     // ==========================================================================
     // 6. Deep Meta AI Architecture
     // ==========================================================================
-    function evaluateBoard(bMatrix) {
+function evaluateBoard(bMatrix) {
         let score = 0;
+        // Central range for 14x14 board (indices 5, 6, 7, 8)
+        const centerStart = 5;
+        const centerEnd = 8;
+
         for (let r = 0; r < SIZE; r++) {
             for (let f = 0; f < SIZE; f++) {
                 const p = bMatrix[r][f];
                 if (p) {
                     const val = PIECE_VALUES[p.type] || 0;
-                    score += p.color === "w" ? val : -val;
+                    // Base value
+                    let cellScore = p.color === "w" ? val : -val;
+                    
+                    // Positional Bonus: Control the center
+                    if (r >= centerStart && r <= centerEnd && f >= centerStart && f <= centerEnd) {
+                        // Bonus for Pawns and Knights specifically for center control
+                        if (p.type === 'P' || p.type === 'N') {
+                            cellScore += (p.color === "w" ? 5 : -5);
+                        }
+                    }
+                    
+                    score += cellScore;
                 }
             }
         }
