@@ -133,6 +133,8 @@
     // ==========================================================================
     // 4. Tactical Legal Movement Engines
     // ==========================================================================
+
+    ////
     function getMoves(r, f, bMatrix) {
         const p = bMatrix[r][f];
         if (!p) return [];
@@ -150,19 +152,16 @@
         if (p.type === "P") {
             const dir = p.color === "w" ? -1 : 1;
             const startRank = p.color === "w" ? SIZE - 2 : 1;
-
             const nr = r + dir;
             if (nr >= 0 && nr < SIZE) {
                 if (!bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
                     moves.push({ r: nr, f: f });
                     const nnr = r + (2 * dir);
-                    // Standard pawn movement remains restricted by "Slow" (Water)
                     if (r === startRank && !isSlow(tFrom) && !isSlow(terrain(nr, f)) && !bMatrix[nnr][f] && !isImpassable(terrain(nnr, f))) {
                         moves.push({ r: nnr, f: f });
                     }
                 }
             }
-
             const captureFiles = [f - 1, f + 1];
             captureFiles.forEach(nf => {
                 if (nf >= 0 && nf < SIZE) {
@@ -171,21 +170,17 @@
                         const targetPiece = bMatrix[tgtR][nf];
                         const tTo = terrain(tgtR, nf);
                         if (targetPiece && targetPiece.color !== p.color && !isImpassable(tTo)) {
-                            if (canCapture(tFrom, tTo)) {
-                                moves.push({ r: tgtR, f: nf });
-                            }
+                            if (canCapture(tFrom, tTo)) moves.push({ r: tgtR, f: nf });
                         }
                     }
                 }
             });
-        } /////  ///
-            else if (["R", "B", "Q"].includes(p.type)) {
+        } 
+        else if (["R", "B", "Q"].includes(p.type)) {
             const dirs = directions[p.type];
             dirs.forEach(([dr, df]) => {
                 let curR = r + dr;
                 let curF = f + df;
-                
-                // Track if the starting square is water
                 const startingInWater = isWater(tFrom);
 
                 while (curR >= 0 && curR < SIZE && curF >= 0 && curF < SIZE) {
@@ -195,30 +190,20 @@
                     const tgt = bMatrix[curR][curF];
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
-                        
-                        // RESTRICTION: Sliding pieces are limited to one square 
-                        // if they start in water OR if they move into water.
+                        // Rule: If starting in water OR moving into water, slide ends.
                         if (startingInWater || isWater(tTo)) break;
-                        
-                        // BLOCKADE: Stop sliding on forest
+                        // Blockade: Stop sliding on forest.
                         if (isForest(tTo)) break; 
                     } else {
-                        // Capture logic:
                         if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
                             moves.push({ r: curR, f: curF });
                         }
-                        // Always break on collision with a piece
                         break;
                     }
-                    
-                    curR += dr;
-                    curF += df;
+                    curR += dr; curF += df;
                 }
             });
         }
-            ////// ///
-            
-    
         else if (["N", "K"].includes(p.type)) {
             const steps = directions[p.type];
             steps.forEach(([dr, df]) => {
@@ -235,9 +220,9 @@
                 }
             });
         }
-
         return moves;
     }
+
 
     function generateAllLegalMoves(color, bMatrix) {
         const list = [];
@@ -258,7 +243,8 @@
     // ==========================================================================
     // 5. Executive Execution & Turn Orchestration
     // ==========================================================================
-    function makeMove(from, to) {
+/////
+function makeMove(from, to) {
         const p = board[from.r][from.f];
         const captured = board[to.r][to.f];
         
@@ -288,6 +274,8 @@
         }
     }
 
+    ////
+  
     // ==========================================================================
     // 6. Deep Meta AI Architecture
     // ==========================================================================
@@ -638,7 +626,21 @@
             window.addEventListener("mouseleave", () => { isPanning = false; });
         }
     }
-
+function isSquareAttacked(r, f, color, bMatrix) {
+    const enemyColor = color === "w" ? "b" : "w";
+    for (let row = 0; row < SIZE; row++) {
+        for (let file = 0; file < SIZE; file++) {
+            const p = bMatrix[row][file];
+            if (p && p.color === enemyColor) {
+                // Generate moves for this enemy piece to see if they can hit (r, f)
+                const moves = getMoves(row, file, bMatrix);
+                if (moves.some(m => m.r === r && m.f === f)) return true;
+            }
+        }
+    }
+    return false;
+}
+    
     function init() {
         board = freshBoard();
         const aiToggle = document.getElementById("ai-toggle"); if (aiToggle) aiToggle.checked = aiEnabled;
