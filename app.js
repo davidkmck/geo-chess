@@ -178,12 +178,16 @@
                     }
                 }
             });
-        } 
-else if (["R", "B", "Q"].includes(p.type)) {
+        } ///
+          else if (["R", "B", "Q"].includes(p.type)) {
             const dirs = directions[p.type];
             dirs.forEach(([dr, df]) => {
                 let curR = r + dr;
                 let curF = f + df;
+                
+                // Track if we are starting in water
+                const startingInWater = isWater(tFrom);
+
                 while (curR >= 0 && curR < SIZE && curF >= 0 && curF < SIZE) {
                     const tTo = terrain(curR, curF);
                     if (isImpassable(tTo)) break;
@@ -191,8 +195,11 @@ else if (["R", "B", "Q"].includes(p.type)) {
                     const tgt = bMatrix[curR][curF];
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
-                        // REVISED: If it's a forest, we allow entry (the push above),
-                        // but we MUST break the loop so the piece cannot slide through it.
+                        
+                        // Rule: If exiting water, stop after one square
+                        if (startingInWater) break;
+                        
+                        // Blockade: Stop sliding on forest or water
                         if (isWater(tTo) || isForest(tTo)) break; 
                     } else {
                         // Capture logic:
