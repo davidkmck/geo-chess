@@ -216,22 +216,22 @@
     const miniMapEl = document.getElementById("miniMap");
     const miniMapViewportEl = document.getElementById("miniMapViewport");
 
-    // ---- Enforce Compact Layout Engine via CSS overrides ----
+    // ---- Dynamic Layout & CSS Fix Patch Engine ----
     const stylePatch = document.createElement("style");
     stylePatch.textContent = `
-        /* Group panel header optimization to save vertical space on mobile */
+        /* Hyper-compact header panel grouping for maximum mobile space */
         header, .controls-header, .top-control-panel {
             padding: 4px 8px !important;
-            margin-bottom: 4px !important;
+            margin-bottom: 6px !important;
             gap: 6px !important;
             min-height: auto !important;
         }
         .btn-ghost, #resetBtn, #undoBtn, #redoBtn {
-            padding: 4px 10px !important;
+            padding: 4px 8px !important;
             font-size: 13px !important;
         }
         
-        /* Unified Left-Hand Control Stack Alignment */
+        /* Layout fix for board and left side control column alignment */
         .board-container-wrapper {
             display: flex !important;
             flex-direction: row !important;
@@ -246,41 +246,73 @@
             flex-direction: column !important;
             align-items: center !important;
             justify-content: space-between !important;
-            height: 280px !important; /* Locks alignment container height */
-            margin-right: 12px !important;
+            height: 280px !important;
+            margin-right: 14px !important;
             z-index: 10;
         }
         
-        /* Render Range Slider Vertically */
+        /* Force Vertical Range Slider Properties */
         .vertical-slider {
             -webkit-appearance: slider-vertical !important;
             writing-mode: bt-lr !important;
             width: 24px !important;
             height: 140px !important;
             padding: 0 !important;
-            margin: 8px 0 !important;
+            margin: 6px 0 !important;
         }
         
-        /* Turn indicator widget styles */
+        /* Board Sizing Reset: Forces grid rows to stretch and fill perfectly */
+        .board-outer {
+            position: relative !important;
+            overflow: hidden !important;
+            background-color: #111 !important;
+            width: 100% !important;
+            max-width: 560px !important;
+            aspect-ratio: 1 / 1 !important;
+        }
+        #board {
+            display: grid !important;
+            grid-template-columns: repeat(14, 1fr) !important;
+            grid-template-rows: repeat(14, 1fr) !important;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .cell {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 100% !important;
+            position: relative !important;
+        }
+        
+        /* Dynamic Turn Widget Styles */
         .turn-indicator-node {
             width: 28px;
             height: 28px;
             border-radius: 50%;
-            border: 2px solid #555;
+            border: 2px solid #444;
             transition: all 0.25s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
         }
-        .turn-indicator-node.white-node { background-color: #fff; }
-        .turn-indicator-node.black-node { background-color: #222; border-color: #aaa; }
+        .turn-indicator-node.white-node { background-color: #ffffff; }
+        .turn-indicator-node.black-node { background-color: #222222; border-color: #888; }
         .turn-indicator-node.active-glow {
-            transform: scale(1.15);
-            box-shadow: 0 0 12px #ffc107;
+            transform: scale(1.2);
+            box-shadow: 0 0 14px #ffc107;
             border-color: #ffc107 !important;
+        }
+        
+        /* Clean Win Overlay Override Isolation */
+        #winOverlay.hidden {
+            display: none !important;
         }
     `;
     document.head.appendChild(stylePatch);
 
-    // Build/Restructure Left Control Stack dynamically right next to board
+    // Build/Restructure Left Control Stack container
     let leftStack = document.querySelector(".left-control-stack");
     if (!leftStack) {
         leftStack = document.createElement("div");
@@ -290,7 +322,7 @@
         }
     }
 
-    // Clear legacy elements from document structure if found elsewhere
+    // Purge legacy out-of-bounds widget markup instances if found
     if (widgetW) widgetW.remove();
     if (widgetB) widgetB.remove();
 
@@ -310,13 +342,11 @@
     zoomSlider.value = String(zoomPreset);
     zoomSlider.className = "vertical-slider";
 
-    // Populate Left UI Grid Stack
     leftStack.innerHTML = "";
     leftStack.appendChild(blackNode);
     leftStack.appendChild(zoomSlider);
     leftStack.appendChild(whiteNode);
 
-    // Append dynamic flip layout button directly to header control group row
     const controlsRow = resetBtn ? resetBtn.parentNode : document.body;
     let flipBtn = document.getElementById("flipBtn");
     if (!flipBtn) {
@@ -369,11 +399,6 @@
         const activeSnapshot = history[currentIndex];
         const lm = activeSnapshot ? activeSnapshot.lastMove : null;
         
-        // Ensure board canvas space computes standard proportional height dimensions
-        if (boardOuterEl) {
-            boardOuterEl.style.height = `${boardOuterEl.clientWidth || 400}px`;
-        }
-
         for (let i = 0; i < SIZE; i++) {
             const r = isFlipped ? i : (SIZE - 1 - i);
             for (let j = 0; j < SIZE; j++) {
@@ -420,7 +445,7 @@
             }
         }
         
-        // Sync active state indicators on left widgets
+        // Dynamic Glow Sync
         if (turn === "w") {
             whiteNode.classList.add("active-glow");
             blackNode.classList.remove("active-glow");
@@ -430,7 +455,7 @@
         }
         boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
         
-        // ---- Zen Mode Panel Filters ----
+        // ---- Zen Mode Panel Visibility Filters ----
         const legendEl = document.querySelector(".legend-card");
         if (legendEl) legendEl.style.display = hideAllUi ? "none" : "block";
         
@@ -440,7 +465,7 @@
         const aiConfigPanel = document.querySelector(".ai-config-panel") || aiToggle?.closest(".panel-card");
         if (aiConfigPanel) aiConfigPanel.style.display = hideAllUi ? "none" : "block";
         
-        // Retain leftStack visualization during Zen mode completely!
+        // Keep left UI side stacking container fully locked visible during Zen mode
         leftStack.style.display = "flex";
 
         if (resetBtn) resetBtn.style.display = hideAllUi ? "none" : "inline-block";
@@ -450,11 +475,16 @@
         
         updateBoardTransform();
         
-        if (gameOver) {
-            winMessage.textContent = gameOverText;
-            winOverlay.classList.remove("hidden");
-        } else {
-            winOverlay.classList.add("hidden");
+        // Absolute control isolation logic for win overlay component visibility
+        if (winOverlay) {
+            if (gameOver) {
+                winMessage.textContent = gameOverText;
+                winOverlay.classList.remove("hidden");
+                winOverlay.style.display = "flex";
+            } else {
+                winOverlay.classList.add("hidden");
+                winOverlay.style.display = "none";
+            }
         }
         
         if (undoBtn) undoBtn.disabled = currentIndex <= 0;
@@ -646,7 +676,7 @@
         render();
     }
 
-    // ---- Panning Engine Hooks ----
+    // ---- Viewport Pan Hooks ----
     boardOuterEl.addEventListener("touchstart", (e) => {
         if (zoomPreset === 2 && e.touches.length === 1) {
             const targetCell = e.touches[0].target.closest(".cell");
