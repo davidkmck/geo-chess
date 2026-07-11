@@ -138,3 +138,63 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+
+   /* CSS Grid/Layout adjustments for Zen Mode */
+    body.zen-active {
+      padding: 0;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #121212;
+    }
+
+    /* Instantly collapse everything outside the core board area */
+    body.zen-active .zen-hide {
+      display: none !important;
+    }
+
+    /* Center the game board cleanly in Zen Mode */
+    body.zen-active .game-layout {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 100vw;
+      margin: 0;
+      padding: 10px;
+    }
+
+    /* Fixed 2-State Floating Action Toggle */
+    .zen-toggle-btn {
+      background: rgba(23, 30, 46, 0.8);
+      border: 1px solid #232d42;
+      color: #94a3b8;
+      padding: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .zen-toggle-btn:hover {
+      color: #38bdf8;
+      border-color: #38bdf8;
+    }
+
+    /* Active Zen State Highlight */
+    body.zen-active .zen-toggle-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(56, 189, 248, 0.1);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      z-index: 1000;
+    }
+  
