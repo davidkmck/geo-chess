@@ -19,14 +19,13 @@
 
     // UI Configuration States
     let aiEnabled = true;  
-    let hideAllUi = false; // Zen Mode Master Toggle
+    let hideAllUi = false; 
 
     // Organic Asymmetric Map Layout (0: Plain, 1: Mountain, 2: Forest, 3: River, 4: Lake, 5: Ford)
-    // Safe buffer zones: No blockers on rows 0, 1, 2 or 11, 12, 13 near standard starting squares.
     const TERRAIN_MAP = [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Safe buffer rank
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0], 
         [0,1,1,0,0,0,0,2,2,2,0,0,0,0], // Black Zone: 2x2 Mountain left, 2x3 Forest right
         [0,1,1,0,0,0,0,2,2,2,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -35,19 +34,22 @@
         [0,0,0,0,2,2,0,0,0,4,4,0,0,0],
         [0,0,1,1,0,0,0,0,0,0,0,0,0,0], // Deep White territory: Symmetrical 2x2 Mountain offset
         [0,0,1,1,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Safe buffer rank
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0], 
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     ];
 
-    // Standard Chess Unicode Piece Engine Map
     const PIECES = {
         w: { r: "♖", n: "♘", b: "♗", q: "♕", k: "♔", p: "♙" },
         b: { r: "♜", n: "♞", b: "♝", q: "♛", k: "♚", p: "♟" }
     };
 
-    // Standard 8-piece royal back-rank setup array
-    const STANDARD_ROYALS = ["r", "n", "b", "q", "k", "b", "n", "r"];
+    // Expanded 12-wide royal rank setup array (8 standard pieces centered, padded by 2 extra rooks on each flank)
+    const TWELVE_ROYALS = ["r", "r", "r", "n", "b", "q", "k", "b", "n", "r", "r", "r"];
+
+    function isSlowTerrain(terrainType) {
+        return terrainType === 2 || terrainType === 3;
+    }
 
     // ==========================================================================
     // 2. Camera Rendering Matrix Sync
@@ -76,13 +78,13 @@
             for (let f = 0; f < SIZE; f++) {
                 let piece = null;
                 
-                // Center the standard 8 pieces between file index 3 and 10
-                if (f >= 3 && f <= 10) {
-                    let standardIdx = f - 3;
-                    if (r === 0) piece = { type: STANDARD_ROYALS[standardIdx], color: "b" };
+                // Center the 12 pawns and 12 back-rank pieces between file indices 1 and 12
+                if (f >= 1 && f <= 12) {
+                    let arrayIdx = f - 1;
+                    if (r === 0) piece = { type: TWELVE_ROYALS[arrayIdx], color: "b" };
                     else if (r === 1) piece = { type: "p", color: "b" };
                     else if (r === SIZE - 2) piece = { type: "p", color: "w" };
-                    else if (r === SIZE - 1) piece = { type: STANDARD_ROYALS[standardIdx], color: "w" };
+                    else if (r === SIZE - 1) piece = { type: TWELVE_ROYALS[arrayIdx], color: "w" };
                 }
                 
                 row.push({
@@ -111,12 +113,11 @@
                 let baseColorClass = (r + f) % 2 === 0 ? "light" : "dark";
                 cellEl.classList.add("cell", baseColorClass);
 
-                // Highlight initial homeland/palace position setup squares (Centered 8x2 areas)
-                if ((f >= 3 && f <= 10) && (r === 0 || r === 1 || r === SIZE - 2 || r === SIZE - 1)) {
+                // Palace visual markers mapping the new 12x2 starting sectors
+                if ((f >= 1 && f <= 12) && (r === 0 || r === 1 || r === SIZE - 2 || r === SIZE - 1)) {
                     cellEl.classList.add("homeland-cell");
                 }
 
-                // Map styling visual environmental layouts
                 if (cellData.terrain === 1) cellEl.classList.add("terrain-mountain");
                 else if (cellData.terrain === 2) cellEl.classList.add("terrain-forest");
                 else if (cellData.terrain === 3) cellEl.classList.add("terrain-river");
@@ -197,48 +198,133 @@
             let dir = p.color === "w" ? -1 : 1;
             let startRow = p.color === "w" ? SIZE - 2 : 1;
             
+            // Forward movement
             let nr = r + dir;
             if (nr >= 0 && nr < SIZE) {
                 let targetCell = board[nr][f];
-                // Blockers include Mountains, Forests, and Lakes
-                if (!targetCell.piece && targetCell.terrain !== 1 && targetCell.terrain !== 2 && targetCell.terrain !== 4) {
-                    targets.push({ r: nr, f: f });
-                    
-                    if (r === startRow) {
-                        let nnr = r + (dir * 2);
-                        let doubleCell = board[nnr][f];
-                        if (!doubleCell.piece && doubleCell.terrain !== 1 && doubleCell.terrain !== 2 && doubleCell.terrain !== 4) {
-                            targets.push({ r: nnr, f: f });
+                let destTerrain = targetCell.terrain;
+                
+                if (!targetCell.piece && destTerrain !== 1 && destTerrain !== 4) {
+                    let canMove = true;
+                    if (isSlowTerrain(destTerrain)) {
+                        let isAdjacent = Math.abs(r - nr) <= 1;
+                        if (!isAdjacent) canMove = false;
+                    }
+
+                    if (canMove) {
+                        targets.push({ r: nr, f: f });
+                        
+                        // Initial double step rule
+                        if (r === startRow) {
+                            let nnr = r + (dir * 2);
+                            let doubleCell = board[nnr][f];
+                            let doubleDestTerrain = doubleCell.terrain;
+                            if (!doubleCell.piece && doubleDestTerrain !== 1 && doubleDestTerrain !== 4) {
+                                if (!isSlowTerrain(doubleDestTerrain)) {
+                                    targets.push({ r: nnr, f: f });
+                                }
+                            }
                         }
                     }
                 }
             }
             
+            // Standard Diagonal Captures
             let captureOffsets = [-1, 1];
             captureOffsets.forEach(fo => {
                 let nf = f + fo;
                 let cr = r + dir;
                 if (cr >= 0 && cr < SIZE && nf >= 0 && nf < SIZE) {
                     let capCell = board[cr][nf];
-                    if (capCell.piece && capCell.piece.color !== p.color && capCell.terrain !== 1 && capCell.terrain !== 2 && capCell.terrain !== 4) {
-                        targets.push({ r: cr, f: nf });
-                    }
-                }
-            });
-        } else {
-            let directions = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
-            directions.forEach(d => {
-                let nr = r + d[0], nf = f + d[1];
-                if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
-                    let targetCell = board[nr][nf];
-                    if (targetCell.terrain !== 1 && targetCell.terrain !== 2 && targetCell.terrain !== 4) {
-                        if (!targetCell.piece || targetCell.piece.color !== p.color) {
-                            targets.push({ r: nr, f: nf });
+                    let destTerrain = capCell.terrain;
+                    if (capCell.piece && capCell.piece.color !== p.color && destTerrain !== 1 && destTerrain !== 4) {
+                        if (!isSlowTerrain(destTerrain)) {
+                            targets.push({ r: cr, f: nf });
                         }
                     }
                 }
             });
+        } 
+        else if (p.type === "n") {
+            let knightOffsets = [
+                [-2,-1], [-2,1], [-1,-2], [-1,2],
+                [1,-2], [1,2], [2,-1], [2,1]
+            ];
+            knightOffsets.forEach(o => {
+                let nr = r + o[0], nf = f + o[1];
+                if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
+                    let targetCell = board[nr][nf];
+                    let destTerrain = targetCell.terrain;
+                    if (destTerrain !== 1 && destTerrain !== 4) {
+                        if (!targetCell.piece || targetCell.piece.color !== p.color) {
+                            let isEnteringSlow = isSlowTerrain(destTerrain);
+                            let startsAdjacent = Math.max(Math.abs(r - nr), Math.abs(f - nf)) <= 1;
+
+                            if (isEnteringSlow) {
+                                if (startsAdjacent && !targetCell.piece) {
+                                    targets.push({ r: nr, f: nf });
+                                }
+                            } else {
+                                targets.push({ r: nr, f: nf });
+                            }
+                        }
+                    }
+                }
+            });
+        } 
+        else {
+            let directions = [];
+            let isSliding = true;
+
+            if (p.type === "r") directions = [[1,0], [-1,0], [0,1], [0,-1]];
+            else if (p.type === "b") directions = [[1,1], [1,-1], [-1,1], [-1,-1]];
+            else if (p.type === "q") directions = [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]];
+            else if (p.type === "k") {
+                directions = [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]];
+                isSliding = false;
+            }
+
+            directions.forEach(d => {
+                let nr = r, nf = f;
+                let steps = 0;
+
+                while (true) {
+                    nr += d[0];
+                    nf += d[1];
+                    steps++;
+
+                    if (nr < 0 || nr >= SIZE || nf < 0 || nf >= SIZE) break;
+
+                    let targetCell = board[nr][nf];
+                    let destTerrain = targetCell.terrain;
+
+                    if (destTerrain === 1 || destTerrain === 4) break;
+
+                    let enteringSlowTerrain = isSlowTerrain(destTerrain);
+                    
+                    if (enteringSlowTerrain) {
+                        if (steps === 1) {
+                            if (!targetCell.piece) {
+                                targets.push({ r: nr, f: nf });
+                            }
+                        }
+                        break; 
+                    }
+
+                    if (!targetCell.piece) {
+                        targets.push({ r: nr, f: nf });
+                    } else {
+                        if (targetCell.piece.color !== p.color) {
+                            targets.push({ r: nr, f: nf });
+                        }
+                        break; 
+                    }
+
+                    if (!isSliding) break; 
+                }
+            });
         }
+
         return targets;
     }
 
@@ -286,7 +372,6 @@
             });
         }
 
-        // Functional Master Toggle for Zen Mode Switch
         const zenBtn = document.getElementById("btn-zen");
         if (zenBtn) {
             zenBtn.addEventListener("click", () => {
