@@ -1,4 +1,4 @@
-(function () {  // 6:15 2026-07-11
+(function () {
     "use strict";
 
     // ==========================================================================
@@ -19,6 +19,8 @@
     let panX = 0;
     let panY = 0;
     let isPanning = false;
+    let startMouseX = 0;
+    let startMouseY = 0;
     let startPanX = 0;
     let startPanY = 0;
 
@@ -29,7 +31,6 @@
     let aiDepth = 2;       
     let aiThinking = false;
 
-    // Undo/Redo Engine Timeline Arrays
     let history = [];
     let moveLog = [];
     let currentIndex = 0;
@@ -49,34 +50,33 @@
     let lastMoveTarget = null; 
 
     // ==========================================================================
-    // 2. Environmental Biome & Terrain Definition Rules
+    // 2. Visual Terrain Biome Designer
     // ==========================================================================
-    function terrain(r, f) {
-        // Mountains
-        if (r >= 3 && r <= 4 && f >= 1 && f <= 2) return "mountain";
-        if (r >= 9 && r <= 10 && f >= 10 && f <= 12) return "mountain";
-        
-        // Forests
-        if (r >= 3 && r <= 4 && f >= 11 && f <= 12) return "forest";
-        if (r >= 9 && r <= 10 && f >= 1 && f <= 3) return "forest";
-        
-        // Lake
-        if (r === 8 && f >= 6 && f <= 8) return "lake";
-        
-        // Solid S-Shaped River (Spanning rows 5, 6, and 7)
-        if (r === 5 && f <= 4) {
-            if (f === 2) return "ford"; // Bridge 1
-            return "river";
-        }
-        if (r === 6 && f >= 4 && f <= 9) {
-            return "river"; // Middle snaking connection
-        }
-        if (r === 7 && f >= 9) {
-            if (f === 11) return "ford"; // Bridge 2
-            return "river";
-        }
+    // Legend: p = plain, M = mountain, F = forest, L = lake, r = river, f = ford
+    const TERRAIN_LAYOUT = [
+        "pppppppppppppp", // 0
+        "pppppppppppppp", // 1
+        "pppppppppppppp", // 2
+        "ppMMFFpppppppp", // 3 (Mountain connected to Forest)
+        "ppMMFFLLpppppp", // 4 (Forest flowing into Lake)
+        "ppppppLLpppppp", // 5 
+        "rrrfrrrppppppp", // 6 (S-Curve River top half + Bridge)
+        "pppppprrrrrrfr", // 7 (S-Curve River bottom half + Bridge)
+        "ppppppLLpppppp", // 8 
+        "ppppppLLFFMMpp", // 9 (Symmetrical layout in White territory)
+        "ppppppppFFMMpp", // 10
+        "pppppppppppppp", // 11
+        "pppppppppppppp", // 12
+        "pppppppppppppp"  // 13
+    ];
 
-        return "plain";
+    const CHAR_TO_TERRAIN = {
+        'p': "plain", 'M': "mountain", 'F': "forest", 
+        'L': "lake", 'r': "river", 'f': "ford"
+    };
+
+    function terrain(r, f) {
+        return CHAR_TO_TERRAIN[TERRAIN_LAYOUT[r][f]] || "plain";
     }
 
     function isWater(t) { return t === "river" || t === "lake"; }
@@ -261,7 +261,7 @@
     }
 
     // ==========================================================================
-    // 6. Deep Meta AI Architecture (Minimax Strategy Layer)
+    // 6. Deep Meta AI Architecture
     // ==========================================================================
     function evaluateBoard(bMatrix) {
         let score = 0;
@@ -352,19 +352,26 @@
 
     function updateMinimapViewportIndicator(scale) {
         const vp = document.getElementById("mini-viewport");
-        if (!vp) return;
+        const boardEl = document.getElementById("board");
+        if (!vp || !boardEl) return;
+
         if (scale <= 1.0) {
             vp.style.width = "100%"; vp.style.height = "100%"; vp.style.left = "0"; vp.style.top = "0";
         } else {
             const pct = (1 / scale) * 100;
-            vp.style.width = `${pct}%`; vp.style.height = `${pct}%`;
-            const maxPanOffset = (SIZE * 40 * (scale - 1)) / 2; 
-            const ratioX = maxPanOffset > 0 ? -panX / maxPanOffset : 0;
-            const ratioY = maxPanOffset > 0 ? -panY / maxPanOffset : 0;
-            const leftPct = ((1 - (1 / scale)) * 50) * (1 + ratioX);
-            const topPct = ((1 - (1 / scale)) * 50) * (1 + ratioY);
-            vp.style.left = `${Math.max(0, Math.min(100 - pct, leftPct))}%`;
-            vp.style.top = `${Math.max(0, Math.min(100 - pct, topPct))}%`;
+            vp.style.width = `${pct}%`; 
+            vp.style.height = `${pct}%`;
+            
+            const w = boardEl.offsetWidth || 560;
+            const h = boardEl.offsetHeight || 560;
+            const maxPanX = (w * scale - w) / (2 * scale);
+            const maxPanY = (h * scale - h) / (2 * scale);
+            
+            const ratioX = maxPanX > 0 ? (maxPanX - panX) / (2 * maxPanX) : 0;
+            const ratioY = maxPanY > 0 ? (maxPanY - panY) / (2 * maxPanY) : 0;
+            
+            vp.style.left = `${ratioX * (100 - pct)}%`;
+            vp.style.top = `${ratioY * (100 - pct)}%`;
         }
     }
 
@@ -555,18 +562,33 @@
         if (outer) {
             outer.addEventListener("mousedown", (e) => {
                 if (zoomPreset === 1) return; 
-                isPanning = true; startPanX = e.clientX - panX; startPanY = e.clientY - panY;
+                isPanning = true; 
+                startMouseX = e.clientX; 
+                startMouseY = e.clientY;
+                startPanX = panX;
+                startPanY = panY;
             });
             window.addEventListener("mousemove", (e) => {
                 if (!isPanning) return;
-                panX = e.clientX - startPanX; panY = e.clientY - startPanY;
                 let scaleFactor = [1.0, 1.75, 3.5][zoomPreset - 1] || 1.0;
-                const boundaryLimit = (SIZE * 40 * (scaleFactor - 1)) / 2;
-                panX = Math.max(-boundaryLimit, Math.min(boundaryLimit, panX));
-                panY = Math.max(-boundaryLimit, Math.min(boundaryLimit, panY));
+                
+                // Track 1:1 with mouse movement
+                panX = startPanX + (e.clientX - startMouseX) / scaleFactor;
+                panY = startPanY + (e.clientY - startMouseY) / scaleFactor;
+                
+                // Dynamic boundary detection based on actual scale
+                const w = document.getElementById("board").offsetWidth;
+                const h = document.getElementById("board").offsetHeight;
+                const maxPanX = (w * scaleFactor - w) / (2 * scaleFactor);
+                const maxPanY = (h * scaleFactor - h) / (2 * scaleFactor);
+                
+                panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+                panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+                
                 updateCameraMatrix();
             });
             window.addEventListener("mouseup", () => { isPanning = false; });
+            window.addEventListener("mouseleave", () => { isPanning = false; });
         }
     }
 
