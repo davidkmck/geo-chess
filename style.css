@@ -484,3 +484,27 @@ main {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* Smoothly animate scaling transitions */
+.board {
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  transform-origin: center center;
+}
+
+/* Forest Terrain styling */
+.terrain-forest {
+  background-color: #2d5a27 !important;
+  border: 1px dashed rgba(255, 255, 255, 0.15) inset;
+}
+
+/* Last Move Indicators */
+.last-move-source {
+  background-color: rgba(240, 217, 181, 0.35) !important;
+  box-shadow: inset 0 0 4px 2px #d4af37;
+}
+
+.last-move-target {
+  background-color: rgba(173, 145, 103, 0.55) !important;
+  box-shadow: inset 0 0 6px 2px #b8860b;
+}
+
