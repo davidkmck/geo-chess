@@ -2,119 +2,117 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Geo Chess - Big Board with Terrain</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Compact Control Header Panel -->
+    <!-- ==========================================================================
+       1. Controls Header Navbar
+       ========================================================================== -->
     <header class="controls-header">
         <div class="header-left">
             <h1>Geo Chess</h1>
-            <button id="zenToggleBtn" class="btn-ghost" title="Toggle Zen Mode">👁️‍🗨️</button>
+            <button id="btn-reset" class="btn-ghost" title="Reset Match">🔄 Reset</button>
+            <button id="btn-flip" class="btn-ghost" title="Flip Board Perspective">🔁 Flip</button>
+            <button id="btn-zen" class="btn-ghost" title="Toggle Zen Mode">👁️ Zen</button>
         </div>
         <div class="header-right">
-            <button id="undoBtn" class="btn-ghost" disabled>↩️ Undo</button>
-            <button id="redoBtn" class="btn-ghost" disabled>↪️ Redo</button>
-            <button id="resetBtn" class="btn-ghost">🔄 Reset</button>
+            <button id="btn-undo" class="btn-ghost" disabled title="Undo Move">⬅️ Undo</button>
+            <button id="btn-redo" class="btn-ghost" disabled title="Redo Move">➡️ Redo</button>
         </div>
     </header>
 
-    <!-- Main Game Window Layout -->
+    <!-- ==========================================================================
+       2. Central Arena Grid Layout
+       ========================================================================== -->
     <main class="game-layout">
         
-        <!-- Interactive Chess Sandbox Row Wrapper -->
         <div class="board-container-wrapper">
-            
-            <!-- Left Side Control Stack (Dynamic Node Generation Hook) -->
+            <!-- Left Sidebar Widget Control Stack -->
             <div class="left-control-stack">
-                <!-- Injected via JavaScript Patch:
-                     - Black Dynamic Node
-                     - Vertical Zoom Range Input
-                     - White Dynamic Node
-                -->
+                <div id="node-b" class="turn-indicator-node black-node" title="Black's Turn Indicator"></div>
+                
+                <!-- 3-State Discrete Zoom Slider preset layout configuration -->
+                <input type="range" id="zoom-slider" class="vertical-slider" min="1" max="3" step="1" value="1" title="Zoom Preset: 1=14x14, 2=8x8, 3=4x4">
+                
+                <div id="node-w" class="turn-indicator-node white-node active-glow" title="White's Turn Indicator"></div>
             </div>
 
-            <!-- Outer Play Frame Boundary Container -->
-            <div class="board-outer">
-                <!-- Row Rank Side Label Bar -->
-                <div id="ranks" class="labels ranks-labels"></div>
+            <!-- Rigid Viewport Outer Bounding Box -->
+            <div class="board-outer" id="board-outer">
+                <!-- Master Typographic Labels Layers -->
+                <div class="labels ranks-labels" id="ranks-labels"></div>
+                <div class="labels files-labels" id="files-labels"></div>
                 
-                <!-- Grid Canvas Core Element Matrix -->
-                <div id="board" class="board"></div>
-                
-                <!-- Column File Lower Label Bar -->
-                <div id="files" class="labels files-labels"></div>
+                <!-- Dynamic Transform Board Engine Matrix -->
+                <div class="board" id="board"></div>
 
-                <!-- Isolated Game Over Win Notification Screen Overlay -->
-                <div id="winOverlay" class="win-overlay hidden">
+                <!-- Navigation Radar Minimap Mode -->
+                <div id="mini-map" class="mini-map">
+                    <div id="mini-viewport" class="mini-map-viewport"></div>
+                </div>
+
+                <!-- Game HUD Notification Screen Overlays -->
+                <div id="win-overlay" class="win-overlay hidden">
                     <div class="win-modal">
-                        <h2 id="winMessage">White Wins!</h2>
-                        <button id="playAgainBtn" class="btn-primary">Play Another Match</button>
+                        <h2 id="win-title">White Wins!</h2>
+                        <button id="btn-another-match" class="btn-primary">Play Again</button>
                     </div>
                 </div>
             </div>
-
-            <!-- Contextual Navigation Radar Minimap Viewport -->
-            <div id="miniMap" class="mini-map hidden">
-                <div id="miniMapViewport" class="mini-map-viewport"></div>
-            </div>
-
         </div>
 
-        <!-- Meta Settings Dashboard & Log Columns Panel -->
-        <section class="game-panels">
-            
-            <!-- AI Integration Configuration Panel -->
-            <div class="panel-card ai-config-panel">
-                <h3>Match settings</h3>
+        <!-- ==========================================================================
+           3. Meta Dashboards & Panels Architecture
+           ========================================================================== -->
+        <div class="game-panels">
+            <!-- Match Settings Configuration Sidebar -->
+            <section class="panel-card">
+                <h3>Match Configuration</h3>
                 <div class="control-group">
                     <label class="switch-label">
-                        <input type="checkbox" id="aiToggle">
-                        <span class="switch-custom"></span>
+                        <input type="checkbox" id="ai-toggle" checked> <!-- DEFAULT: Checked -->
                         Enable AI Opponent (Black)
                     </label>
                 </div>
                 <div class="control-group">
-                    <label for="aiDifficulty">AI Engine Search Depth:</label>
-                    <select id="aiDifficulty" class="select-clean">
-                        <option value="1">Level 1 (Shallow)</option>
-                        <option value="2" selected>Level 2 (Balanced)</option>
-                        <option value="3">Level 3 (Deep Search)</option>
+                    <label for="ai-depth">AI Search Depth:</label>
+                    <select id="ai-depth" class="select-clean">
+                        <option value="1">Depth 1 (Fast)</option>
+                        <option value="2" selected>Depth 2 (Balanced)</option>
+                        <option value="3">Depth 3 (Analytical)</option>
                     </select>
                 </div>
-                <div id="aiThinking" class="ai-thinking-indicator hidden">
-                    <span class="spinner"></span> AI is analyzing tactical paths...
+                <div id="ai-thinking" class="ai-thinking-indicator hidden">
+                    <div class="spinner"></div>
+                    <span>AI is calculating strategic pathways...</span>
                 </div>
-            </div>
+            </section>
 
-            <!-- Live Match Move Notation History Log Panel -->
-            <div class="panel-card history-panel">
-                <h3>Notation History Log</h3>
+            <!-- Notation Timeline History Log Box -->
+            <section class="panel-card">
+                <h3>Move History Timeline</h3>
                 <div class="log-scroll-frame">
-                    <ol id="moveLog" class="move-log-list">
-                        <li class="active" data-index="0">Start</li>
-                    </ol>
+                    <ul id="move-log-list" class="move-log-list"></ul>
                 </div>
-            </div>
+            </section>
 
-            <!-- Map Environmental Terrain Legend Reference Card -->
-            <div class="panel-card legend-card">
-                <h3>Environmental Map Legend</h3>
+            <!-- Environmental Biome Key Legend -->
+            <section class="panel-card">
+                <h3>Terrain Tactical Index</h3>
                 <div class="legend-grid">
-                    <div class="legend-item"><span class="key-patch plain"></span> Plain (Standard Rules)</div>
-                    <div class="legend-item"><span class="key-patch home"></span> Home Rank Zones</div>
-                    <div class="legend-item"><span class="key-patch mountain"></span> Mountain (Impassable Block)</div>
-                    <div class="legend-item"><span class="key-patch forest"></span> Forest (Impassable Block)</div>
-                    <div class="legend-item"><span class="key-patch river"></span> River (Halts Sliders / No Water-Water Capture)</div>
-                    <div class="legend-item"><span class="key-patch lake"></span> Lake (Halts Sliders / No Water-Water Capture)</div>
-                    <div class="legend-item"><span class="key-patch ford"></span> Ford Shallow (Safe River Crossing Zone)</div>
+                    <div class="legend-item"><div class="key-patch plain"></div> <span>Plain (Standard Movement Rules)</span></div>
+                    <div class="legend-item"><div class="key-patch home"></div> <span>Deployment Sanctuary (Home Ranks)</span></div>
+                    <div class="legend-item"><div class="key-patch mountain"></div> <span>Mountain Range (Impassable Wall)</span></div>
+                    <div class="legend-item"><div class="key-patch forest"></div> <span>Dense Woods (Impassable Blockade)</span></div>
+                    <div class="legend-item"><div class="key-patch river"></div> <span>Deep River (Halts Sliders; No Water Combat)</span></div>
+                    <div class="legend-item"><div class="key-patch lake"></div> <span>Lake Center (Halts Sliders; No Water Combat)</span></div>
+                    <div class="legend-item"><div class="key-patch ford"></div> <span>Shallow Ford (Bridges: Full Standard Access)</span></div>
                 </div>
-            </div>
-
-        </section>
-
+            </section>
+        </div>
     </main>
 
     <script src="app.js"></script>
