@@ -26,68 +26,79 @@ header h1 {
   text-align: center;
 }
 
+/* Core Structural Layout (So things don't collapse to 0px) */
 .game-layout {
-  width: 100%;
-  max-width: 620px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
 }
 
-/* ---- Zen Mode Engine Styles ---- */
-body.zen-active {
-  padding: 0;
-  overflow: hidden;
+.game-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: relative;
 }
 
+.board-outer {
+    position: relative;
+    /* Ensure this matches your intended canvas/grid dimensions */
+}
+
+/* ==========================================================================
+   ZEN MODE STYLES
+   ========================================================================== */
+
+/* Instantly collapse everything outside the core board area */
 body.zen-active .zen-hide {
-  display: none !important;
+    display: none !important;
 }
 
+/* Center the game board cleanly in Zen Mode */
 body.zen-active .game-layout {
-  max-width: 100vw;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  padding: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 100vw;
+    margin: 0;
+    padding: 10px;
 }
 
-/* Floating 2-State Dynamic Trigger Button */
-#zenToggleBtn {
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
-  color: #ccc;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  transition: all 0.2s ease;
+/* Fixed 2-State Floating Action Toggle */
+.zen-toggle-btn {
+    background: rgba(23, 30, 46, 0.8);
+    border: 1px solid #232d42;
+    color: #94a3b8;
+    padding: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-#zenToggleBtn:hover {
-  background: #3a3a3a;
-  color: #fff;
-  transform: scale(1.05);
+.zen-toggle-btn:hover {
+    color: #38bdf8;
+    border-color: #38bdf8;
 }
 
-/* Persistent Target Pin inside Full-Zen Focus State */
-body.zen-active #zenToggleBtn {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  background: rgba(37, 99, 235, 0.2);
-  border-color: #2563eb;
-  color: #38bdf8;
-  z-index: 999;
+/* Active Zen State Highlight */
+body.zen-active .zen-toggle-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(56, 189, 248, 0.1);
+    border-color: #38bdf8;
+    color: #38bdf8;
+    z-index: 1000;
 }
+
 
 /* ---- Panel Cards Structure ---- */
 .panel-card {
