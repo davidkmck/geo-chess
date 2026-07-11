@@ -258,8 +258,7 @@
   function isLegalTarget(r, f) {
     return legalTargets.some((m) => m.r === r && m.f === f);
   }
-
-  function render() {
+function render() {
     boardEl.innerHTML = "";
     const activeSnapshot = history[currentIndex];
     const lm = activeSnapshot ? activeSnapshot.lastMove : null;
@@ -275,9 +274,13 @@
         if (t !== "plain") cls += " terrain-" + t;
         if (isHomeRank(r)) cls += " home-rank";
         
+        let isLastMoveTarget = false;
         if (lm) {
           if (lm.from.r === r && lm.from.f === f) cls += " last-move-source";
-          if (lm.to.r === r && lm.to.f === f) cls += " last-move-target";
+          if (lm.to.r === r && lm.to.f === f) {
+            cls += " last-move-target";
+            isLastMoveTarget = true;
+          }
         }
 
         cell.className = cls;
@@ -295,6 +298,14 @@
         if (piece) {
           const span = document.createElement("span");
           span.className = "piece " + (piece.color === "w" ? "white" : "black");
+          
+          // If this piece just moved, give it a distinguished class or direct style outline
+          if (isLastMoveTarget) {
+            span.classList.add("last-moved-piece");
+            // Optional fallback: inline styling to guarantee visibility without CSS file updates
+            span.style.textShadow = "0 0 8px #ffeb3b, 0 0 12px #ffeb3b";
+          }
+          
           span.textContent = GLYPHS[piece.type];
           cell.appendChild(span);
         }
@@ -324,6 +335,7 @@
     redoBtn.disabled = currentIndex >= history.length - 1;
     renderMoveLog();
   }
+ 
 
   function renderMoveLog() {
     moveLogEl.innerHTML = "";
