@@ -178,8 +178,8 @@
                     }
                 }
             });
-        } /////
-else if (["R", "B", "Q"].includes(p.type)) {
+        } /////  ///
+            else if (["R", "B", "Q"].includes(p.type)) {
             const dirs = directions[p.type];
             dirs.forEach(([dr, df]) => {
                 let curR = r + dr;
@@ -216,7 +216,7 @@ else if (["R", "B", "Q"].includes(p.type)) {
                 }
             });
         }
-            //////
+            ////// ///
             
     
         else if (["N", "K"].includes(p.type)) {
