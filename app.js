@@ -1,84 +1,547 @@
 (function () {
     "use strict";
 
+    // ==========================================================================
+    // 1. Core Config & Global State Matrix
+    // ==========================================================================
     const SIZE = 14;
-    let board = [], turn = "w", selected = null, legalTargets = [], gameOver = false;
-    let zoomPreset = 1, panX = 0, panY = 0, aiEnabled = true, hideAllUi = false;
+    const FILES = "abcdefghijklmn".split("");
 
-    const TERRAIN_MAP = [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0], 
-        [0,1,1,0,0,0,0,2,2,2,0,0,0,0], [0,1,1,0,0,0,0,2,2,2,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0], 
-        [3,3,3,5,3,3,3,3,3,3,3,5,3,3], [0,0,0,0,2,2,0,0,0,4,4,0,0,0], [0,0,0,0,2,2,0,0,0,4,4,0,0,0], 
-        [0,0,1,1,0,0,0,0,0,0,0,0,0,0], [0,0,1,1,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0], 
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    ];
-    const PIECES = { w: { r: "♖", n: "♘", b: "♗", q: "♕", k: "♔", p: "♙" }, b: { r: "♜", n: "♞", b: "♝", q: "♛", k: "♚", p: "♟" } };
-    const TWELVE_ROYALS = ["r", "r", "r", "n", "b", "q", "k", "b", "n", "r", "r", "r"];
+    let board = [];
+    let turn = "w";
+    let selected = null; 
+    let legalTargets = []; 
+    let gameOver = false;
+    let gameOverText = "";
 
-    function isSlowTerrain(t) { return t === 2 || t === 3; }
+    // Camera Navigation States
+    let zoomPreset = 1; 
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let startPanX = 0;
+    let startPanY = 0;
 
-    function updateMinimap() {
-        const miniMap = document.getElementById("mini-map");
-        if (miniMap) miniMap.classList.toggle("hidden", zoomPreset <= 1);
+    // UI Configuration States
+    let isFlipped = false;
+    let hideAllUi = false; 
+    let aiEnabled = true;  
+    let aiDepth = 2;       
+    let aiThinking = false;
+
+    // Undo/Redo Engine Timeline Arrays
+    let history = [];
+    let moveLog = [];
+    let currentIndex = 0;
+
+    const BACK_RANK_FILES = {
+        3: "R", 4: "N", 5: "B", 6: "Q", 7: "K", 8: "B", 9: "N", 10: "R"
+    };
+
+    const PIECE_SYMBOLS = {
+        w: { P: "♙", R: "♖", N: "♘", B: "♗", Q: "♕", K: "♔" },
+        b: { P: "♟", R: "♜", N: "♞", B: "♝", Q: "♛", K: "♚" }
+    };
+
+    const PIECE_VALUES = { P: 10, N: 30, B: 30, R: 50, Q: 90, K: 9000 };
+
+    let lastMoveSource = null; 
+    let lastMoveTarget = null; 
+
+    // ==========================================================================
+    // 2. Environmental Biome & Terrain Definition Rules
+    // ==========================================================================
+    function terrain(r, f) {
+        // Mountains
+        if (r >= 3 && r <= 4 && f >= 1 && f <= 2) return "mountain";
+        if (r >= 9 && r <= 10 && f >= 10 && f <= 12) return "mountain";
+        
+        // Forests
+        if (r >= 3 && r <= 4 && f >= 11 && f <= 12) return "forest";
+        if (r >= 9 && r <= 10 && f >= 1 && f <= 3) return "forest";
+        
+        // Lake
+        if (r === 8 && f >= 6 && f <= 8) return "lake";
+        
+        // Solid S-Shaped River (Spanning rows 5, 6, and 7)
+        if (r === 5 && f <= 4) {
+            if (f === 2) return "ford"; // Bridge 1
+            return "river";
+        }
+        if (r === 6 && f >= 4 && f <= 9) {
+            return "river"; // Middle snaking connection
+        }
+        if (r === 7 && f >= 9) {
+            if (f === 11) return "ford"; // Bridge 2
+            return "river";
+        }
+
+        return "plain";
     }
 
-    function setupInitialBoardState() {
-        board = [];
-        for (let r = 0; r < SIZE; r++) {
-            let row = [];
-            for (let f = 0; f < SIZE; f++) {
-                let piece = null;
-                if (f >= 1 && f <= 12) {
-                    let idx = f - 1;
-                    if (r === 0) piece = { type: TWELVE_ROYALS[idx], color: "b" };
-                    else if (r === 1) piece = { type: "p", color: "b" };
-                    else if (r === SIZE - 2) piece = { type: "p", color: "w" };
-                    else if (r === SIZE - 1) piece = { type: TWELVE_ROYALS[idx], color: "w" };
+    function isWater(t) { return t === "river" || t === "lake"; }
+    function isImpassable(t) { return t === "mountain" || t === "forest"; }
+    function isHomeRank(r) { return r <= 1 || r >= SIZE - 2; }
+    function canCapture(fromTerrain, toTerrain) {
+        return !(isWater(fromTerrain) && isWater(toTerrain));
+    }
+
+    // ==========================================================================
+    // 3. Board Initialization & Deep Cloning Tools
+    // ==========================================================================
+    function freshBoard() {
+        const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+        for (let f = 0; f < SIZE; f++) {
+            if (BACK_RANK_FILES[f]) b[0][f] = { type: BACK_RANK_FILES[f], color: "b", moved: false };
+            b[1][f] = { type: "P", color: "b", moved: false };
+            b[SIZE - 2][f] = { type: "P", color: "w", moved: false };
+            if (BACK_RANK_FILES[f]) b[SIZE - 1][f] = { type: BACK_RANK_FILES[f], color: "w", moved: false };
+        }
+        return b;
+    }
+
+    function cloneBoard(src) {
+        return src.map(row => row.map(cell => cell ? { ...cell } : null));
+    }
+
+    function saveState() {
+        history = history.slice(0, currentIndex + 1);
+        moveLog = moveLog.slice(0, currentIndex);
+        history.push({
+            board: cloneBoard(board),
+            turn: turn,
+            gameOver: gameOver,
+            gameOverText: gameOverText,
+            lastMoveSource: lastMoveSource ? { ...lastMoveSource } : null,
+            lastMoveTarget: lastMoveTarget ? { ...lastMoveTarget } : null
+        });
+        currentIndex = history.length - 1;
+        updateUndoRedoButtons();
+    }
+
+    // ==========================================================================
+    // 4. Tactical Legal Movement Engines
+    // ==========================================================================
+    function getMoves(r, f, bMatrix) {
+        const p = bMatrix[r][f];
+        if (!p) return [];
+        const moves = [];
+        const tFrom = terrain(r, f);
+
+        const directions = {
+            R: [[1,0], [-1,0], [0,1], [0,-1]],
+            B: [[1,1], [1,-1], [-1,1], [-1,-1]],
+            Q: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]],
+            K: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]],
+            N: [[2,1], [2,-1], [-2,1], [-2,-1], [1,2], [1,-2], [-1,2], [-1,-2]]
+        };
+
+        if (p.type === "P") {
+            const dir = p.color === "w" ? -1 : 1;
+            const startRank = p.color === "w" ? SIZE - 2 : 1;
+
+            const nr = r + dir;
+            if (nr >= 0 && nr < SIZE) {
+                if (!bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
+                    moves.push({ r: nr, f: f });
+                    const nnr = r + (2 * dir);
+                    if (r === startRank && !bMatrix[nnr][f] && !isImpassable(terrain(nnr, f))) {
+                        moves.push({ r: nnr, f: f });
+                    }
                 }
-                row.push({ terrain: TERRAIN_MAP[r][f], piece });
             }
-            board.push(row);
+
+            const captureFiles = [f - 1, f + 1];
+            captureFiles.forEach(nf => {
+                if (nf >= 0 && nf < SIZE) {
+                    const tgtR = r + dir;
+                    if (tgtR >= 0 && tgtR < SIZE) {
+                        const targetPiece = bMatrix[tgtR][nf];
+                        const tTo = terrain(tgtR, nf);
+                        if (targetPiece && targetPiece.color !== p.color && !isImpassable(tTo)) {
+                            if (canCapture(tFrom, tTo)) {
+                                moves.push({ r: tgtR, f: nf });
+                            }
+                        }
+                    }
+                }
+            });
+        } 
+        else if (["R", "B", "Q"].includes(p.type)) {
+            const dirs = directions[p.type];
+            dirs.forEach(([dr, df]) => {
+                let curR = r + dr;
+                let curF = f + df;
+                while (curR >= 0 && curR < SIZE && curF >= 0 && curF < SIZE) {
+                    const tTo = terrain(curR, curF);
+                    if (isImpassable(tTo)) break;
+
+                    const tgt = bMatrix[curR][curF];
+                    if (!tgt) {
+                        moves.push({ r: curR, f: curF });
+                        if (isWater(tTo) && tTo !== "ford") break; 
+                    } else {
+                        if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
+                            moves.push({ r: curR, f: curF });
+                        }
+                        break;
+                    }
+                    curR += dr;
+                    curF += df;
+                }
+            });
+        }
+        else if (["N", "K"].includes(p.type)) {
+            const steps = directions[p.type];
+            steps.forEach(([dr, df]) => {
+                const nr = r + dr;
+                const nf = f + df;
+                if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
+                    const tTo = terrain(nr, nf);
+                    if (!isImpassable(tTo)) {
+                        const tgt = bMatrix[nr][nf];
+                        if (!tgt || (tgt.color !== p.color && canCapture(tFrom, tTo))) {
+                            moves.push({ r: nr, f: nf });
+                        }
+                    }
+                }
+            });
+        }
+
+        return moves;
+    }
+
+    function generateAllLegalMoves(color, bMatrix) {
+        const list = [];
+        for (let r = 0; r < SIZE; r++) {
+            for (let f = 0; f < SIZE; f++) {
+                const p = bMatrix[r][f];
+                if (p && p.color === color) {
+                    const targets = getMoves(r, f, bMatrix);
+                    targets.forEach(t => {
+                        list.push({ from: { r, f }, to: t });
+                    });
+                }
+            }
+        }
+        return list;
+    }
+
+    // ==========================================================================
+    // 5. Executive Execution & Turn Orchestration
+    // ==========================================================================
+    function makeMove(from, to) {
+        const p = board[from.r][from.f];
+        const captured = board[to.r][to.f];
+        
+        const moveNotation = `${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`;
+        moveLog.push(moveNotation);
+
+        board[to.r][to.f] = { ...p, moved: true };
+        board[from.r][from.f] = null;
+
+        lastMoveSource = { ...from };
+        lastMoveTarget = { ...to };
+
+        if (captured && captured.type === "K") {
+            gameOver = true;
+            gameOverText = p.color === "w" ? "White Wins by Regicide!" : "Black Wins by Regicide!";
+        }
+
+        turn = turn === "w" ? "b" : "w";
+        selected = null;
+        legalTargets = [];
+
+        saveState();
+        render();
+
+        if (!gameOver && aiEnabled && turn === "b") {
+            triggerAIAsyncExecution();
         }
     }
 
-    function drawBoard() {
+    // ==========================================================================
+    // 6. Deep Meta AI Architecture (Minimax Strategy Layer)
+    // ==========================================================================
+    function evaluateBoard(bMatrix) {
+        let score = 0;
+        for (let r = 0; r < SIZE; r++) {
+            for (let f = 0; f < SIZE; f++) {
+                const p = bMatrix[r][f];
+                if (p) {
+                    const val = PIECE_VALUES[p.type] || 0;
+                    score += p.color === "w" ? val : -val;
+                }
+            }
+        }
+        return score;
+    }
+
+    function minimax(bMatrix, depth, alpha, beta, isMaximizing) {
+        if (depth === 0) return { score: evaluateBoard(bMatrix) };
+        const moves = generateAllLegalMoves(isMaximizing ? "w" : "b", bMatrix);
+        if (moves.length === 0) return { score: evaluateBoard(bMatrix) };
+
+        let bestMove = null;
+        if (isMaximizing) {
+            let maxEval = -Infinity;
+            for (const move of moves) {
+                const nextBoard = cloneBoard(bMatrix);
+                const captured = nextBoard[move.to.r][move.to.f];
+                nextBoard[move.to.r][move.to.f] = { ...nextBoard[move.from.r][move.from.f], moved: true };
+                nextBoard[move.from.r][move.from.f] = null;
+
+                if (captured && captured.type === "K") return { score: 99999 + depth, move };
+
+                const scoreEval = minimax(nextBoard, depth - 1, alpha, beta, false).score;
+                if (scoreEval > maxEval) { maxEval = scoreEval; bestMove = move; }
+                alpha = Math.max(alpha, scoreEval);
+                if (beta <= alpha) break; 
+            }
+            return { score: maxEval, move: bestMove };
+        } else {
+            let minEval = Infinity;
+            for (const move of moves) {
+                const nextBoard = cloneBoard(bMatrix);
+                const captured = nextBoard[move.to.r][move.to.f];
+                nextBoard[move.to.r][move.to.f] = { ...nextBoard[move.from.r][move.from.f], moved: true };
+                nextBoard[move.from.r][move.from.f] = null;
+
+                if (captured && captured.type === "K") return { score: -99999 - depth, move };
+
+                const scoreEval = minimax(nextBoard, depth - 1, alpha, beta, true).score;
+                if (scoreEval < minEval) { minEval = scoreEval; bestMove = move; }
+                beta = Math.min(beta, scoreEval);
+                if (beta <= alpha) break; 
+            }
+            return { score: minEval, move: bestMove };
+        }
+    }
+
+    function triggerAIAsyncExecution() {
+        if (gameOver) return;
+        aiThinking = true;
+        setThinkingIndicatorVisibility(true);
+
+        setTimeout(() => {
+            const decision = minimax(board, aiDepth, -Infinity, Infinity, false);
+            aiThinking = false;
+            setThinkingIndicatorVisibility(false);
+
+            if (decision && decision.move) {
+                makeMove(decision.move.from, decision.move.to);
+            } else {
+                gameOver = true;
+                gameOverText = "Black Surrenders! White wins.";
+                saveState();
+                render();
+            }
+        }, 50);
+    }
+
+    // ==========================================================================
+    // 7. Render Core Engines (DOM Synchronization Layouts)
+    // ==========================================================================
+    function updateCameraMatrix() {
         const boardEl = document.getElementById("board");
         if (!boardEl) return;
-        boardEl.innerHTML = "";
-        for (let r = 0; r < SIZE; r++) {
-            for (let f = 0; f < SIZE; f++) {
-                const cellEl = document.createElement("div");
-                cellEl.dataset.row = r; cellEl.dataset.file = f;
-                cellEl.className = `cell ${(r + f) % 2 === 0 ? "light" : "dark"}`;
-                const terrainTypes = ["plain", "mountain", "forest", "river", "lake", "ford"];
-                cellEl.classList.add(`terrain-${terrainTypes[board[r][f].terrain]}`);
-                if (board[r][f].piece) {
-                    const p = document.createElement("span");
-                    p.className = `piece ${board[r][f].piece.color === "w" ? "white" : "black"}`;
-                    p.textContent = PIECES[board[r][f].piece.color][board[r][f].piece.type];
-                    cellEl.appendChild(p);
-                }
-                cellEl.addEventListener("click", handleCellClick);
-                boardEl.appendChild(cellEl);
-            }
+        let scaleFactor = [1.0, 1.75, 3.5][zoomPreset - 1] || 1.0;
+        boardEl.style.transform = `scale(${scaleFactor}) translate(${panX}px, ${panY}px)`;
+        updateMinimapViewportIndicator(scaleFactor);
+    }
+
+    function updateMinimapViewportIndicator(scale) {
+        const vp = document.getElementById("mini-viewport");
+        if (!vp) return;
+        if (scale <= 1.0) {
+            vp.style.width = "100%"; vp.style.height = "100%"; vp.style.left = "0"; vp.style.top = "0";
+        } else {
+            const pct = (1 / scale) * 100;
+            vp.style.width = `${pct}%`; vp.style.height = `${pct}%`;
+            const maxPanOffset = (SIZE * 40 * (scale - 1)) / 2; 
+            const ratioX = maxPanOffset > 0 ? -panX / maxPanOffset : 0;
+            const ratioY = maxPanOffset > 0 ? -panY / maxPanOffset : 0;
+            const leftPct = ((1 - (1 / scale)) * 50) * (1 + ratioX);
+            const topPct = ((1 - (1 / scale)) * 50) * (1 + ratioY);
+            vp.style.left = `${Math.max(0, Math.min(100 - pct, leftPct))}%`;
+            vp.style.top = `${Math.max(0, Math.min(100 - pct, topPct))}%`;
         }
     }
 
-    function handleCellClick(e) {
-        // ... (Insert your existing movement logic here)
-        drawBoard();
+    function render() {
+        const container = document.getElementById("board");
+        if (!container) return;
+        container.innerHTML = "";
+        container.className = `board turn-${turn}`;
+
+        const loopOrder = Array.from({ length: SIZE }, (_, i) => i);
+        if (isFlipped) loopOrder.reverse();
+
+        loopOrder.forEach(r => {
+            for (let f = 0; f < SIZE; f++) {
+                const cellEl = document.createElement("div");
+                const t = terrain(r, f);
+                const isLight = (r + f) % 2 === 0;
+
+                cellEl.classList.add("cell", isLight ? "light" : "dark");
+                if (t !== "plain") cellEl.classList.add(`terrain-${t}`);
+                if (isHomeRank(r)) cellEl.classList.add("home-rank");
+
+                if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cellEl.classList.add("last-move-source");
+                if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cellEl.classList.add("last-move-target");
+
+                if (selected && selected.r === r && selected.f === f) cellEl.classList.add("selected");
+                const isLegal = legalTargets.some(tgt => tgt.r === r && tgt.f === f);
+                if (isLegal) {
+                    const hasEnemy = board[r][f] && board[r][f].color !== board[selected.r][selected.f].color;
+                    cellEl.classList.add(hasEnemy ? "legal-capture" : "legal-move");
+                }
+
+                const p = board[r][f];
+                if (p) {
+                    const pieceEl = document.createElement("span");
+                    pieceEl.className = `piece ${p.color === "w" ? "white" : "black"}`;
+                    pieceEl.textContent = PIECE_SYMBOLS[p.color][p.type];
+                    pieceEl.draggable = !gameOver && (!aiEnabled || turn === "w") && p.color === turn;
+                    pieceEl.addEventListener("dragstart", (e) => handleDragStart(e, r, f));
+                    pieceEl.addEventListener("dragend", handleDragEnd);
+                    cellEl.appendChild(pieceEl);
+                }
+
+                cellEl.addEventListener("click", () => handleSquareClick(r, f));
+                cellEl.addEventListener("dragover", (e) => e.preventDefault());
+                cellEl.addEventListener("drop", (e) => handleSquareDrop(e, r, f));
+                container.appendChild(cellEl);
+            }
+        });
+
+        renderLabels();
+        renderMoveLog();
+        updateModalScreenState();
+        syncTurnIndicators();
     }
 
-    function init() {
-        setupInitialBoardState();
-        const zoomSlider = document.getElementById("zoom-slider");
-        zoomSlider?.addEventListener("input", (e) => {
-            zoomPreset = parseInt(e.target.value);
-            updateMinimap();
-        });
-        document.getElementById("btn-zen")?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
-        drawBoard();
-        updateMinimap();
+    function renderLabels() {
+        const ranksContainer = document.getElementById("ranks-labels");
+        const filesContainer = document.getElementById("files-labels");
+        if (!ranksContainer || !filesContainer) return;
+
+        ranksContainer.innerHTML = ""; filesContainer.innerHTML = "";
+        const rankOrder = Array.from({ length: SIZE }, (_, i) => i + 1);
+        if (isFlipped) rankOrder.reverse();
+        rankOrder.forEach(rank => { const label = document.createElement("div"); label.textContent = rank; ranksContainer.appendChild(label); });
+        FILES.forEach(file => { const label = document.createElement("div"); label.textContent = file.toUpperCase(); filesContainer.appendChild(label); });
     }
-    document.addEventListener("DOMContentLoaded", init);
-})();
+
+    function renderMoveLog() {
+        const listEl = document.getElementById("move-log-list");
+        if (!listEl) return;
+        listEl.innerHTML = "";
+        moveLog.forEach((move, idx) => {
+            const li = document.createElement("li");
+            li.textContent = `${idx + 1}. ${move}`;
+            if (idx === currentIndex - 1) li.classList.add("active");
+            li.addEventListener("click", () => jumpToTimelineIndex(idx + 1));
+            listEl.appendChild(li);
+        });
+    }
+
+    function updateModalScreenState() {
+        const overlay = document.getElementById("win-overlay");
+        const title = document.getElementById("win-title");
+        if (!overlay || !title) return;
+        if (gameOver) { title.textContent = gameOverText; overlay.classList.remove("hidden"); } 
+        else { overlay.classList.add("hidden"); }
+    }
+
+    function syncTurnIndicators() {
+        const wNode = document.getElementById("node-w");
+        const bNode = document.getElementById("node-b");
+        if (!wNode || !bNode) return;
+        if (turn === "w") { wNode.classList.add("active-glow"); bNode.classList.remove("active-glow"); } 
+        else { bNode.classList.add("active-glow"); wNode.classList.remove("active-glow"); }
+    }
+
+    function setThinkingIndicatorVisibility(visible) {
+        const ind = document.getElementById("ai-thinking");
+        if (!ind) return;
+        visible ? ind.classList.remove("hidden") : ind.classList.add("hidden");
+    }
+
+    function updateUndoRedoButtons() {
+        const btnUndo = document.getElementById("btn-undo");
+        const btnRedo = document.getElementById("btn-redo");
+        if (btnUndo) btnUndo.disabled = currentIndex <= 0;
+        if (btnRedo) btnRedo.disabled = currentIndex >= history.length - 1;
+    }
+
+    // ==========================================================================
+    // 8. User Interaction Handlers (Clicks & Drag Gestures)
+    // ==========================================================================
+    function handleSquareClick(r, f) {
+        if (gameOver || aiThinking || (aiEnabled && turn === "b")) return;
+
+        const p = board[r][f];
+        if (selected && selected.r === r && selected.f === f) {
+            selected = null; legalTargets = []; render(); return;
+        }
+
+        const isTargetLegal = legalTargets.some(tgt => tgt.r === r && tgt.f === f);
+        if (isTargetLegal && selected) {
+            makeMove(selected, { r, f });
+            return;
+        }
+
+        if (p && p.color === turn) {
+            selected = { r, f }; legalTargets = getMoves(r, f, board); render();
+        } else {
+            selected = null; legalTargets = []; render();
+        }
+    }
+
+    function handleDragStart(e, r, f) {
+        if (gameOver || aiThinking || (aiEnabled && turn === "b")) { e.preventDefault(); return; }
+        selected = { r, f };
+        legalTargets = getMoves(r, f, board);
+        e.dataTransfer.setData("text/plain", JSON.stringify({ r, f }));
+        setTimeout(() => { const cell = e.target.parentElement; if (cell) cell.classList.add("dragging-source"); }, 0);
+    }
+
+    function handleDragEnd(e) {
+        document.querySelectorAll(".dragging-source").forEach(n => n.classList.remove("dragging-source"));
+    }
+
+    function handleSquareDrop(e, r, f) {
+        e.preventDefault();
+        try {
+            const from = JSON.parse(e.dataTransfer.getData("text/plain"));
+            const isTargetLegal = legalTargets.some(tgt => tgt.r === r && tgt.f === f);
+            if (isTargetLegal && from) makeMove(from, { r, f });
+            else { selected = null; legalTargets = []; render(); }
+        } catch (err) { selected = null; legalTargets = []; render(); }
+    }
+
+    function jumpToTimelineIndex(idx) {
+        if (idx < 0 || idx >= history.length) return;
+        currentIndex = idx;
+        const stateData = history[currentIndex];
+        board = cloneBoard(stateData.board);
+        turn = stateData.turn; gameOver = stateData.gameOver; gameOverText = stateData.gameOverText;
+        lastMoveSource = stateData.lastMoveSource ? { ...stateData.lastMoveSource } : null;
+        lastMoveTarget = stateData.lastMoveTarget ? { ...stateData.lastMoveTarget } : null;
+        selected = null; legalTargets = [];
+        updateUndoRedoButtons(); render();
+        if (!gameOver && aiEnabled && turn === "b") triggerAIAsyncExecution();
+    }
+
+    function setupControlLayoutListeners() {
+        document.getElementById("btn-undo")?.addEventListener("click", () => { if (currentIndex > 0) jumpToTimelineIndex(currentIndex - 1); });
+        document.getElementById("btn-redo")?.addEventListener("click", () => { if (currentIndex < history.length - 1) jumpToTimelineIndex(currentIndex + 1); });
+        document.getElementById("btn-reset")?.addEventListener("click", () => {
+            board = freshBoard(); turn = "w"; selected = null; legalTargets = []; gameOver = false; gameOverText = "";
+            lastMoveSource = null; lastMoveTarget = null; history = []; moveLog = []; saveState(); render();
+        });
+        document.getElementById("btn-another-match")?.addEventListener("click", () => document.getElementById("btn-reset").click());
+        document.getElementById("btn-flip")?.addEventListener("click", () => { isFlipped = !isFlipped; render(); });
+        document.getElementById("btn-zen")?.addEventListener("click", () => {
+            hideAllUi = !hideAllUi; document.body.classList.toggle("zen-active", hideAll
