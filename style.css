@@ -16,6 +16,7 @@ body {
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
+  transition: padding 0.2s ease;
 }
 
 header h1 {
@@ -31,6 +32,61 @@ header h1 {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  transition: all 0.2s ease;
+}
+
+/* ---- Zen Mode Engine Styles ---- */
+body.zen-active {
+  padding: 0;
+  overflow: hidden;
+}
+
+body.zen-active .zen-hide {
+  display: none !important;
+}
+
+body.zen-active .game-layout {
+  max-width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 16px;
+}
+
+/* Floating 2-State Dynamic Trigger Button */
+#zenToggleBtn {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  color: #ccc;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+#zenToggleBtn:hover {
+  background: #3a3a3a;
+  color: #fff;
+  transform: scale(1.05);
+}
+
+/* Persistent Target Pin inside Full-Zen Focus State */
+body.zen-active #zenToggleBtn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: rgba(37, 99, 235, 0.2);
+  border-color: #2563eb;
+  color: #38bdf8;
+  z-index: 999;
 }
 
 /* ---- Panel Cards Structure ---- */
@@ -65,7 +121,7 @@ button {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.1s;
 }
 
 .btn-primary { background: #2563eb; color: #fff; }
@@ -82,327 +138,3 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.9rem;
-}
-
-select {
-  background: #2a2a2a;
-  color: #fff;
-  border: 1px solid #3a3a3a;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-.thinking-banner {
-  font-size: 0.85rem;
-  color: #ff9800;
-  font-weight: bold;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 0.4; }
-  50% { opacity: 1; }
-  100% { opacity: 0.4; }
-}
-
-/* ---- Active Turn Status Panel Widgets ---- */
-.turn-widgets-container {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin-top: 4px;
-}
-
-.turn-widget {
-  padding: 0.5rem 1.25rem;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 2px solid transparent;
-  opacity: 0.35;
-}
-
-.white-widget { background-color: #ffffff !important; color: #121212 !important; }
-.black-widget { background-color: #2a2a2a !important; color: #ffffff !important; border-color: #3a3a3a !important; }
-.turn-widget.active { opacity: 1; transform: scale(1.04); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
-
-/* ---- Main Interactive Grid Viewport Layout Container ---- */
-.game-container {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  position: relative;
-  width: 100%;
-}
-
-/* ---- Native 3-State Vertical Zoom Slider UI ---- */
-.zoom-slider-container {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: clamp(280px, 75vw, 440px);
-  gap: 6px;
-}
-
-.slider-labels {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
-  font-size: 11px;
-  font-weight: bold;
-  color: #888;
-  text-align: right;
-  line-height: 1;
-}
-
-/* Transforms range slider input element vertically */
-.zoom-slider-container input[type="range"] {
-  writing-mode: vertical-lr;
-  direction: rtl;
-  appearance: slider-vertical;
-  width: 12px;
-  height: 100%;
-  background: #252525;
-  border-radius: 6px;
-  outline: none;
-  cursor: pointer;
-}
-
-/* ---- Core Canvas Board Frames ---- */
-.board-outer {
-  position: relative;
-  width: 100%;
-  max-width: 500px;
-  aspect-ratio: 1 / 1;
-  background: #1a1a1a;
-  border: 3px solid #333;
-  border-radius: 6px;
-  overflow: hidden; /* Encapsulates the 8x8 viewport crops completely */
-  touch-action: none; /* Disables standard double-tap zooming natively */
-}
-
-.board {
-  display: grid;
-  grid-template-columns: repeat(14, 1fr);
-  grid-template-rows: repeat(14, 1fr);
-  width: 100%;
-  height: 100%;
-  transform-origin: top left;
-  transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1);
-  will-change: transform;
-}
-
-/* ---- Axis Coordinate Labels ---- */
-.axis-labels {
-  position: absolute;
-  display: flex;
-  z-index: 5;
-  font-size: 9px;
-  font-weight: bold;
-  color: rgba(255, 255, 255, 0.6);
-  pointer-events: none;
-  background: rgba(0, 0, 0, 0.35);
-}
-
-.ranks-labels {
-  flex-direction: column;
-  left: 2px;
-  top: 0;
-  height: 100%;
-  justify-content: space-around;
-}
-
-.files-labels {
-  bottom: 2px;
-  left: 0;
-  width: 100%;
-  justify-content: space-around;
-}
-
-/* ---- Board Chess Tiles System ---- */
-.cell {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s;
-}
-
-.cell.light { background-color: #b58863; }
-.cell.dark { background-color: #f0d9b5; }
-
-/* ---- Dynamic Terrain Rules Swatches ---- */
-.cell.terrain-mountain { background-color: #616161 !important; }
-.cell.terrain-forest { background-color: #2e7d32 !important; }
-.cell.terrain-river { background-color: #1565c0 !important; }
-.cell.terrain-ford { background-color: #0288d1 !important; border: 2px dashed #b58863; }
-.cell.terrain-lake { background-color: #0d47a1 !important; }
-.cell.home-rank { box-shadow: inset 0 0 0 2px rgba(255,215,0,0.25); }
-
-/* ---- Target Movement Identifiers ---- */
-.cell.selected { background-color: rgba(255, 235, 59, 0.5) !important; }
-.cell.legal-move::after {
-  content: "";
-  width: 32%;
-  height: 32%;
-  background: rgba(0, 255, 0, 0.45);
-  border-radius: 50%;
-  position: absolute;
-}
-.cell.legal-capture::after {
-  content: "";
-  width: 84%;
-  height: 84%;
-  border: 4px solid rgba(255, 0, 0, 0.5);
-  border-radius: 50%;
-  position: absolute;
-}
-
-.cell.last-move-source { background-color: rgba(255, 152, 0, 0.35) !important; }
-.cell.last-move-target { background-color: rgba(255, 152, 0, 0.5) !important; }
-
-/* ---- Chess Piece Token Graphics ---- */
-.piece {
-  font-size: clamp(14px, 5.2vw, 28px);
-  cursor: grab;
-  z-index: 2;
-  transition: none;
-}
-
-.piece.white { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 0 2px #000; }
-.piece.black { color: #1a1a1a; text-shadow: 0 2px 4px rgba(255,255,255,0.2), 0 0 2px #fff; }
-
-.last-moved-piece { text-shadow: 0 0 8px #fffb3b, 0 0 14px #fffb3b !important; }
-.dragging-source { opacity: 0.35; }
-
-.drag-ghost {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.85;
-  transform: translate(-50%, -50%);
-}
-
-/* ---- Accurate Dynamic Mini-Map Overlay ---- */
-.mini-map {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  width: 76px;
-  height: 76px;
-  background: rgba(15, 15, 15, 0.85);
-  border: 2px solid #555;
-  border-radius: 4px;
-  z-index: 10;
-  pointer-events: none; /* Allows click gestures to pierce right through to cells beneath */
-}
-
-.mini-map.hidden {
-  display: none !important;
-}
-
-.mini-map-viewport {
-  position: absolute;
-  border: 1.5px solid #ff5722;
-  background: rgba(255, 87, 34, 0.25);
-  box-sizing: border-box;
-}
-
-/* ---- Sub-Layout Action Triggers Row ---- */
-.bottom-controls-row {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin: 4px 0;
-}
-
-/* ---- Legend Details Cards ---- */
-.legend-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 8px;
-  font-size: 0.85rem;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #ccc;
-}
-
-.swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  border: 1px solid #444;
-}
-.swatch.plain { background: #b58863; }
-.swatch.mountain { background: #616161; }
-.swatch.forest { background: #2e7d32; }
-.swatch.river { background: #1565c0; }
-.swatch.ford { background: #0288d1; }
-.swatch.lake { background: #0d47a1; }
-
-/* ---- History Lists Panel ---- */
-.log-scroll-wrapper {
-  max-height: 120px;
-  overflow-y: auto;
-  border: 1px solid #2d2d2d;
-  background: #151515;
-  border-radius: 4px;
-}
-
-.move-history-list {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 10px;
-  gap: 8px;
-  list-style: none;
-  font-family: monospace;
-  font-size: 0.9rem;
-}
-
-.move-history-list li {
-  padding: 3px 6px;
-  background: #252525;
-  border-radius: 3px;
-  cursor: pointer;
-  color: #aaa;
-}
-
-.move-history-list li:hover { background: #353535; color: #fff; }
-.move-history-list li.active { background: #2563eb; color: #fff; font-weight: bold; }
-
-/* ---- End Game Modals Window ---- */
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-}
-
-.modal-card {
-  background: #1e1e1e;
-  padding: 24px;
-  border-radius: 8px;
-  text-align: center;
-  border: 1px solid #333;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-}
-
-.modal-card h2 { margin-bottom: 16px; font-size: 1.6rem; }
-.hidden { display: none !important; }
