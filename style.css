@@ -192,6 +192,23 @@ main {
   display: none;
 }
 
+/* Ensure the outer wrapper contains the zoomed overflow and handles relative space */
+.board-outer {
+  position: relative;
+  overflow: hidden;
+  touch-action: none; /* Prevents default browser refreshing/scrolling while dragging the board */
+}
+
+/* Base board smooth transform adjustments */
+.board {
+  cursor: grab;
+  transform-origin: 0 0; /* Change origin to top-left to make bounding logic math vastly simpler */
+  transition: transform 0.1s ease-out; /* Snappy responsive drag tracking */
+}
+.board:active {
+  cursor: grabbing;
+}
+
 .board-outer {
   width: 100%;
   max-width: 600px;
@@ -507,4 +524,36 @@ main {
   background-color: rgba(173, 145, 103, 0.55) !important;
   box-shadow: inset 0 0 6px 2px #b8860b;
 }
+
+/* Mini-Map container in top right */
+.mini-map {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 100px;
+  height: 100px;
+  background: rgba(20, 19, 15, 0.85);
+  border: 2px solid #3d3a30;
+  border-radius: 4px;
+  z-index: 10;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  pointer-events: none; /* Let clicks pass straight through if overlapping elements */
+}
+
+/* The visual bounding box tracking the player's view */
+.mini-map-viewport {
+  position: absolute;
+  border: 1.5px solid #d4af37;
+  background: rgba(212, 175, 55, 0.15);
+  box-sizing: border-box;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hidden {
+  display: none !important;
+}
+
 
