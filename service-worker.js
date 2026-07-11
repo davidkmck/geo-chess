@@ -1,11 +1,11 @@
-const CACHE_NAME = 'geo-chess-v1';
+const CACHE_NAME = 'geo-chess-v5';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  './favicon.ico'
+  './icon.png'
 ];
 
 // Install Lifecycle Event: Cache all core application shell assets
