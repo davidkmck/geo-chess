@@ -721,25 +721,28 @@
     updateAIThinkingUI(true);
     const expectedIndex = currentIndex;
 
-    setTimeout(() => {
-      let result = null;
-      try {
-        result = minimax(cloneBoard(board), aiDepth, -Infinity, Infinity, aiColor);
-      } catch (err) {
-        result = null;
-      }
-      
-      // Delay executing the physical board update to allow a more deliberate, humanlike pace
+    // Use requestAnimationFrame to ensure the UI paints the "Thinking..." status instantly before starting the heavy evaluation loop
+    requestAnimationFrame(() => {
       setTimeout(() => {
-        aiThinking = false;
-        updateAIThinkingUI(false);
+        let result = null;
+        try {
+          result = minimax(cloneBoard(board), aiDepth, -Infinity, Infinity, aiColor);
+        } catch (err) {
+          result = null;
+        }
+        
+        // After calculation complete, hold the thinking status for a 2-second organic buffer before physical board execution
+        setTimeout(() => {
+          aiThinking = false;
+          updateAIThinkingUI(false);
 
-        if (currentIndex !== expectedIndex || gameOver || turn !== aiColor) return;
-        if (!result || !result.move) return;
+          if (currentIndex !== expectedIndex || gameOver || turn !== aiColor) return;
+          if (!result || !result.move) return;
 
-        animateAndMakeMove(result.move.from.r, result.move.from.f, result.move.move);
-      }, 2000); 
-    }, 60);
+          animateAndMakeMove(result.move.from.r, result.move.from.f, result.move.move);
+        }, 2000); 
+      }, 50);
+    });
   }
 
   function pieceLabel(type) {
