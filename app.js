@@ -178,9 +178,8 @@
                     }
                 }
             });
-        } //
-            
-    else if (["R", "B", "Q"].includes(p.type)) {
+        } /////
+else if (["R", "B", "Q"].includes(p.type)) {
             const dirs = directions[p.type];
             dirs.forEach(([dr, df]) => {
                 let curR = r + dr;
@@ -197,8 +196,8 @@
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
                         
-                        // Rule: If starting in water OR moving into water, 
-                        // sliding pieces (R, B, Q) are restricted to one square.
+                        // Rule: If starting in water, OR moving into water,
+                        // sliding pieces (R, B, Q) are restricted to exactly one square.
                         if (startingInWater || isWater(tTo)) break;
                         
                         // Blockade: Stop sliding on forest
@@ -217,6 +216,10 @@
                 }
             });
         }
+
+            //////
+            
+    
         else if (["N", "K"].includes(p.type)) {
             const steps = directions[p.type];
             steps.forEach(([dr, df]) => {
