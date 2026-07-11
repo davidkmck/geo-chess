@@ -1,152 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="theme-color" content="#14130f">
-<title>Geo Chess — 14×14</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<style>
-  /* --- High Contrast Enhanced Terrain Overrides --- */
-  .terrain-mountain {
-    background-color: #1a1714 !important; /* Noticeably darker, commanding stone tone */
-    box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.85);
-  }
-  .terrain-forest {
-    background-color: #122d19 !important; /* Dense, deep wildwood green */
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.6);
-  }
-  .terrain-river, .terrain-lake {
-    background-color: #2563eb !important; /* Rich deep water blue */
-    /* Fine dark framing outlines outlining body borders */
-    box-shadow: inset 0 0 0 2px #1d4ed8, inset 0 0 8px rgba(0, 0, 0, 0.4);
-  }
-  .terrain-ford {
-    background-color: #3b82f6 !important;
-    border: 2px dashed #1d4ed8;
-  }
-
-  /* --- Last Move Accent Glow --- */
-  .last-moved-piece {
-    text-shadow: 0 0 8px #ffeb3b, 0 0 14px #ffeb3b !important;
-  }
-
-  /* --- Turn Status Panel Widgets --- */
-  .turn-widgets-container {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-  }
-  .turn-widget {
-    padding: 0.5rem 1.25rem;
-    border-radius: 6px;
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 0.2;
-    filter: grayscale(90%);
-    border: 2px solid transparent;
-  }
-  .white-widget {
-    background-color: #ffffff;
-    color: #18181b;
-  }
-  .white-widget.active {
-    opacity: 1;
-    filter: grayscale(0%);
-    border-color: #f59e0b;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 0 5px rgba(245, 158, 11, 0.4);
-  }
-  .black-widget {
-    background-color: #27272a;
-    color: #f4f4f5;
-    border: 2px solid #3f3f46;
-  }
-  .black-widget.active {
-    opacity: 1;
-    filter: grayscale(0%);
-    border-color: #f59e0b;
-    box-shadow: 0 0 15px rgba(39, 39, 42, 0.7), 0 0 8px rgba(245, 158, 11, 0.4);
-  }
-</style>
+  <meta charset="UTF-8">
+  <title>Geo Chess — 14×14</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#121212">
 </head>
 <body>
 
-  <header class="app-header">
-    <h1>Geo Chess <span class="accent">Chess</span></h1>
-    <p class="subtitle">14×14 board · same pieces</p>
+  <header>
+    <h1>Geo Chess</h1>
   </header>
 
-  <main>
-    <div class="status-bar">
-      <!-- Dual Side Action Widgets (Illuminates conditionally based on active player turn) -->
-      <div class="turn-widgets-container">
-        <div id="widget-w" class="turn-widget white-widget active">White's Turn</div>
-        <div id="widget-b" class="turn-widget black-widget">Black's Turn</div>
-      </div>
-      <button id="resetBtn" class="btn-reset" aria-label="Reset board">Reset</button>
-    </div>
-
-    <div class="ai-panel">
-      <label class="ai-toggle">
-        <input type="checkbox" id="aiToggle">
-        AI opponent (plays Black)
-      </label>
-      <select id="aiDifficulty" class="ai-select">
-        <option value="1">Easy</option>
-        <option value="2" selected>Medium</option>
-        <option value="3">Hard (slower)</option>
-      </select>
-      <span id="aiThinking" class="ai-thinking hidden">Thinking…</span>
-    </div>
-
-    <!-- Unified Board Frame Viewport Canvas Container -->
-    <div class="board-outer">
-      <div class="ranks" id="ranks"></div>
-      <div class="board" id="board"></div>
-      <div class="corner"></div>
-      <div class="files" id="files"></div>
-      
-      <!-- Spatial PIP Mini-Map Overlay -->
-      <div id="miniMap" class="mini-map hidden">
-        <div id="miniMapViewport" class="mini-map-viewport"></div>
-      </div>
-    </div>
+  <main class="game-layout">
     
-    <p class="hint">Tap a piece, then tap a highlighted square to move it. Drag also works.</p>
-
-    <ul class="legend">
-      <li><span class="swatch" style="background:#1a1714; box-shadow: inset 0 0 4px #000;"></span>Mountain — impassable (knights may jump over, never land)</li>
-      <li><span class="swatch" style="background:#2563eb; border: 1px solid #1d4ed8;"></span>River / Lake — wade one square per turn, can't attack while mid-crossing</li>
-      <li><span class="swatch" style="background:#122d19;"></span>Thick Forest — impassable blockades</li>
-    </ul>
-
-    <div class="history-panel">
-      <div class="history-controls">
-        <button id="undoBtn" class="btn-ghost" disabled>&#8592; Undo</button>
-        <button id="redoBtn" class="btn-ghost" disabled>Redo &#8594;</button>
+    <!-- Top Global Match Control Header Bar -->
+    <div class="control-panel panel-card">
+      <div class="control-row">
+        <button id="resetBtn" class="btn-danger">🔄 Reset Match</button>
+        <button id="undoBtn" class="btn-secondary" disabled>⬅️ Undo</button>
+        <button id="redoBtn" class="btn-secondary" disabled>➡️ Redo</button>
       </div>
-      <p class="history-label">Move history — tap any entry to jump there</p>
-      <ol id="moveLog" class="move-log"></ol>
+
+      <div class="control-row">
+        <div class="toggle-group">
+          <label for="aiToggle" class="switch-label">🤖 AI Opponent:</label>
+          <input type="checkbox" id="aiToggle">
+        </div>
+        <div class="select-group">
+          <label for="aiDifficulty">Depth:</label>
+          <select id="aiDifficulty">
+            <option value="1">1 (Fast)</option>
+            <option value="2" selected>2 (Normal)</option>
+            <option value="3">3 (Thorough)</option>
+          </select>
+        </div>
+        <div id="aiThinking" class="thinking-banner hidden">Thinking...</div>
+      </div>
+
+      <div class="turn-widgets-container">
+        <div id="widget-w" class="turn-widget white-widget active">White Turn</div>
+        <div id="widget-b" class="turn-widget black-widget">Black Turn</div>
+      </div>
     </div>
+
+    <!-- Main Game Structural Area Layout Container -->
+    <div class="game-container">
+      
+      <!-- Left Vertical Zoom State Slider Control Column -->
+      <div class="zoom-slider-container">
+        <div class="slider-labels">
+          <span>8x8</span>
+          <span>Crop</span>
+          <span>Full</span>
+        </div>
+        <input type="range" id="zoomSlider" min="0" max="2" step="1" value="0">
+      </div>
+
+      <!-- The Interaction Viewport Canvas Wrapper -->
+      <div class="board-outer">
+        <div id="ranks" class="axis-labels ranks-labels"></div>
+        <div id="board" class="board"></div>
+        <div id="files" class="axis-labels files-labels"></div>
+        
+        <!-- Functional Mini-Map Overlay Layout Element -->
+        <div id="miniMap" class="mini-map hidden">
+          <div id="miniMapViewport" class="mini-map-viewport"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Modular Bottom Layout Navigation Toggles Row -->
+    <div class="bottom-controls-row">
+      <button id="toggleLegendBtn" class="btn-ghost">🗺️ Hide Legend</button>
+      <button id="toggleHistoryBtn" class="btn-ghost">📜 Hide History</button>
+    </div>
+
+    <!-- Map Terrain Rules Legend Grid Panel -->
+    <div class="legend-card panel-card">
+      <h3>Terrain Mechanics Guide</h3>
+      <div class="legend-grid">
+        <div class="legend-item"><span class="swatch plain"></span><strong>Plains:</strong> Standard chess pathing rules.</div>
+        <div class="legend-item"><span class="swatch mountain"></span><strong>Mountains:</strong> Impassable blockades. Only Knights may vault over.</div>
+        <div class="legend-item"><span class="swatch forest"></span><strong>Forest:</strong> Blocks sliding views. Pieces must stop inside; Knights can jump over.</div>
+        <div class="legend-item"><span class="swatch river"></span><strong>River:</strong> Strips sliding ranges. Moving pieces must stop immediately upon entry.</div>
+        <div class="legend-item"><span class="swatch ford"></span><strong>Ford:</strong> Shallow breaks allowing normal sliding movement directly through water.</div>
+        <div class="legend-item"><span class="swatch lake"></span><strong>Lake:</strong> Inner deep water blockades. Units inside cannot capture other aquatic tiles.</div>
+      </div>
+    </div>
+
+    <!-- Move History Log Table List Panel -->
+    <div class="panel-card">
+      <h3>Match Log History</h3>
+      <div class="log-scroll-wrapper">
+        <ol id="moveLog" class="move-history-list"></ol>
+      </div>
+    </div>
+
   </main>
 
-  <div id="winOverlay" class="win-overlay hidden">
-    <div class="win-card">
-      <p class="win-title" id="winMessage">White wins</p>
-      <p class="win-sub">The king was captured.</p>
-      <button id="playAgainBtn" class="btn-reset">Play again</button>
+  <!-- Winner Decided End Game Banner Overlay Modal Screen -->
+  <div id="winOverlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 id="winMessage">White Wins!</h2>
+      <button id="playAgainBtn" class="btn-primary">Play Another Match</button>
     </div>
   </div>
 
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
