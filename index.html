@@ -16,7 +16,7 @@
 <body>
 
   <header class="app-header">
-    <h1>Big Board <span class="accent">Chess</span></h1>
+    <h1>Geo Chess <span class="accent">Chess</span></h1>
     <p class="subtitle">14×14 board · same pieces · no terrain yet</p>
   </header>
 
@@ -45,7 +45,17 @@
       <div class="corner"></div>
       <div class="files" id="files"></div>
     </div>
-
+    
+<div class="board-outer">
+  <!-- Your existing ranks, files, and board elements -->
+  <div id="board" class="board"></div>
+  
+  <!-- Add this Mini-Map overlay -->
+  <div id="miniMap" class="mini-map hidden">
+    <div id="miniMapViewport" class="mini-map-viewport"></div>
+  </div>
+</div>
+    
     <p class="hint">Tap a piece, then tap a highlighted square to move it. Drag also works.</p>
 
     <ul class="legend">
