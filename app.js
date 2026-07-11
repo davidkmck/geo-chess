@@ -7,8 +7,11 @@
     let selected = null;
     let legalTargets = [];
     let zoomPreset = 1;
-    let aiEnabled = true;
 
+    const PIECES = {
+        w: { r: "♖", n: "♘", b: "♗", q: "♕", k: "♔", p: "♙" },
+        b: { r: "♜", n: "♞", b: "♝", q: "♛", k: "♚", p: "♟" }
+    };
     const TERRAIN_MAP = [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,1,1,0,0,0,0,2,2,2,0,0,0,0],
@@ -18,20 +21,9 @@
         [0,0,1,1,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     ];
-
-    const PIECES = {
-        w: { r: "♖", n: "♘", b: "♗", q: "♕", k: "♔", p: "♙" },
-        b: { r: "♜", n: "♞", b: "♝", q: "♛", k: "♚", p: "♟" }
-    };
     const TWELVE_ROYALS = ["r", "r", "r", "n", "b", "q", "k", "b", "n", "r", "r", "r"];
 
-    function isSlowTerrain(terrainType) { return terrainType === 2 || terrainType === 3; }
-
-    function updateMinimap() {
-        const miniMap = document.getElementById("mini-map");
-        if (!miniMap) return;
-        zoomPreset > 1 ? miniMap.classList.remove("hidden") : miniMap.classList.add("hidden");
-    }
+    function isSlowTerrain(t) { return t === 2 || t === 3; }
 
     function setupInitialBoardState() {
         board = [];
@@ -40,12 +32,12 @@
             for (let f = 0; f < SIZE; f++) {
                 let piece = null;
                 if (f >= 1 && f <= 12) {
-                    if (r === 0) piece = { type: TWELVE_ROYALS[f - 1], color: "b" };
+                    if (r === 0) piece = { type: TWELVE_ROYALS[f-1], color: "b" };
                     else if (r === 1) piece = { type: "p", color: "b" };
-                    else if (r === SIZE - 2) piece = { type: "p", color: "w" };
-                    else if (r === SIZE - 1) piece = { type: TWELVE_ROYALS[f - 1], color: "w" };
+                    else if (r === SIZE-2) piece = { type: "p", color: "w" };
+                    else if (r === SIZE-1) piece = { type: TWELVE_ROYALS[f-1], color: "w" };
                 }
-                row.push({ terrain: TERRAIN_MAP[r][f], piece: piece });
+                row.push({ terrain: TERRAIN_MAP[r][f], piece });
             }
             board.push(row);
         }
@@ -84,25 +76,15 @@
                 while (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
                     let cell = board[nr][nf];
                     if (cell.terrain === 1 || cell.terrain === 4) break;
-                    if (!cell.piece) {
-                        targets.push({ r: nr, f: nf });
-                    } else if (cell.piece.color !== p.color) {
-                        targets.push({ r: nr, f: nf });
-                        break;
-                    } else break;
+                    if (!cell.piece) { targets.push({ r: nr, f: nf }); } 
+                    else if (cell.piece.color !== p.color) { targets.push({ r: nr, f: nf }); break; }
+                    else break;
                     if (isRestricted) break;
                     nr += d[0]; nf += d[1];
                 }
             });
         }
         return targets;
-    }
-
-    function executeMove(sr, sf, tr, tf) {
-        board[tr][tf].piece = board[sr][sf].piece;
-        board[sr][sf].piece = null;
-        turn = turn === "w" ? "b" : "w";
-        drawBoard();
     }
 
     function drawBoard() {
@@ -117,14 +99,13 @@
                 cellEl.className = `cell ${(r+f)%2===0 ? 'light':'dark'} terrain-${terrainTypes[board[r][f].terrain]}`;
                 if (selected && selected.r === r && selected.f === f) cellEl.classList.add("selected");
                 if (legalTargets.some(t => t.r === r && t.f === f)) cellEl.classList.add("legal-move");
-                
                 if (board[r][f].piece) {
                     const pEl = document.createElement("span");
                     pEl.className = `piece ${board[r][f].piece.color}`;
                     pEl.textContent = PIECES[board[r][f].piece.color][board[r][f].piece.type];
                     cellEl.appendChild(pEl);
                 }
-                cellEl.addEventListener("click", handleCellClick);
+                cellEl.onclick = handleCellClick;
                 boardEl.appendChild(cellEl);
             }
         }
@@ -134,7 +115,9 @@
         const r = parseInt(e.currentTarget.dataset.row);
         const f = parseInt(e.currentTarget.dataset.file);
         if (selected && legalTargets.some(t => t.r === r && t.f === f)) {
-            executeMove(selected.r, selected.f, r, f);
+            board[r][f].piece = board[selected.r][selected.f].piece;
+            board[selected.r][selected.f].piece = null;
+            turn = turn === "w" ? "b" : "w";
             selected = null; legalTargets = [];
         } else if (board[r][f].piece && board[r][f].piece.color === turn) {
             selected = { r, f };
@@ -145,17 +128,13 @@
         drawBoard();
     }
 
-    function init() { 
-        setupInitialBoardState(); 
-        drawBoard(); 
-        const zenBtn = document.getElementById("btn-zen");
-        zenBtn?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
-        const zoom = document.getElementById("zoom-slider");
-        zoom?.addEventListener("input", (e) => {
+    window.onload = () => {
+        setupInitialBoardState();
+        drawBoard();
+        document.getElementById("btn-zen")?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
+        document.getElementById("zoom-slider")?.addEventListener("input", (e) => {
             zoomPreset = parseInt(e.target.value);
-            updateMinimap();
+            document.getElementById("mini-map")?.classList.toggle("hidden", zoomPreset <= 1);
         });
-        updateMinimap();
-    }
-    document.addEventListener("DOMContentLoaded", init);
+    };
 })();
