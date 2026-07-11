@@ -15,14 +15,16 @@
     --clr-ford: #8b5a2b;
 }
 
-/* --- STRUCTURE (Crucial for the Board to appear) --- */
+/* --- STRUCTURE --- */
 .board {
-    display: grid;
+    display: grid !important;
     grid-template-columns: repeat(14, 1fr);
     grid-template-rows: repeat(14, 1fr);
     width: 100%;
-    max-width: 540px;
+    max-width: 560px;
     aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    border: 2px solid var(--border-color);
 }
 
 .cell {
@@ -32,35 +34,27 @@
     align-items: center;
     justify-content: center;
     position: relative;
-    box-sizing: border-box;
 }
 
 .cell.light { background-color: var(--clr-light); }
 .cell.dark { background-color: var(--clr-dark); }
 
 /* --- Piece Visibility --- */
-.piece { font-size: 24px; cursor: pointer; z-index: 2; }
-.piece.w { color: #ffffff !important; text-shadow: 0 0 4px #000; font-weight: bold; }
-.piece.b { color: #000000 !important; text-shadow: 0 0 2px #fff; font-weight: bold; }
+.piece { font-size: 20px; cursor: pointer; z-index: 2; pointer-events: none; }
+.piece.white { color: #ffffff !important; text-shadow: 0 0 4px #000; font-weight: bold; }
+.piece.black { color: #000000 !important; text-shadow: 0 0 2px #fff; font-weight: bold; }
 
 /* --- Organic Terrain --- */
-.cell.terrain-forest {
-    background-color: var(--clr-forest);
-    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-}
-.cell.terrain-river {
+.terrain-forest { background-color: var(--clr-forest); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+.terrain-river { 
     background: linear-gradient(135deg, var(--clr-river) 25%, transparent 25%),
                 linear-gradient(225deg, var(--clr-river) 25%, transparent 25%);
-    background-size: 50% 50%;
-    background-color: var(--clr-river);
+    background-size: 50% 50%; background-color: var(--clr-river); 
 }
 
 /* --- UI Hiding Logic --- */
 .mini-map.hidden { display: none !important; }
-
 body.zen-active .controls-header,
 body.zen-active .game-panels,
 body.zen-active .left-control-stack,
-body.zen-active .labels {
-    display: none !important;
-}
+body.zen-active .labels { display: none !important; }
