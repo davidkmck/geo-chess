@@ -15,11 +15,35 @@
     --clr-ford: #8b5a2b;
 }
 
-/* Piece Visibility */
+/* --- STRUCTURE (Crucial for the Board to appear) --- */
+.board {
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    grid-template-rows: repeat(14, 1fr);
+    width: 100%;
+    max-width: 540px;
+    aspect-ratio: 1 / 1;
+}
+
+.cell {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.cell.light { background-color: var(--clr-light); }
+.cell.dark { background-color: var(--clr-dark); }
+
+/* --- Piece Visibility --- */
+.piece { font-size: 24px; cursor: pointer; z-index: 2; }
 .piece.w { color: #ffffff !important; text-shadow: 0 0 4px #000; font-weight: bold; }
 .piece.b { color: #000000 !important; text-shadow: 0 0 2px #fff; font-weight: bold; }
 
-/* Organic Terrain */
+/* --- Organic Terrain --- */
 .cell.terrain-forest {
     background-color: var(--clr-forest);
     border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
@@ -28,9 +52,10 @@
     background: linear-gradient(135deg, var(--clr-river) 25%, transparent 25%),
                 linear-gradient(225deg, var(--clr-river) 25%, transparent 25%);
     background-size: 50% 50%;
+    background-color: var(--clr-river);
 }
 
-/* UI Hiding Logic */
+/* --- UI Hiding Logic --- */
 .mini-map.hidden { display: none !important; }
 
 body.zen-active .controls-header,
