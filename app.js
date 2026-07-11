@@ -196,11 +196,11 @@ else if (["R", "B", "Q"].includes(p.type)) {
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
                         
-                        // Rule: If starting in water, OR moving into water,
-                        // sliding pieces (R, B, Q) are restricted to exactly one square.
+                        // RESTRICTION: Sliding pieces are limited to one square 
+                        // if they start in water OR if they move into water.
                         if (startingInWater || isWater(tTo)) break;
                         
-                        // Blockade: Stop sliding on forest
+                        // BLOCKADE: Stop sliding on forest
                         if (isForest(tTo)) break; 
                     } else {
                         // Capture logic:
@@ -216,7 +216,6 @@ else if (["R", "B", "Q"].includes(p.type)) {
                 }
             });
         }
-
             //////
             
     
