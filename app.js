@@ -178,16 +178,14 @@
                     }
                 }
             });
-        } ///
-          else if (["R", "B", "Q"].includes(p.type)) {
+        } 
+        else if (["R", "B", "Q"].includes(p.type)) {
             const dirs = directions[p.type];
             dirs.forEach(([dr, df]) => {
                 let curR = r + dr;
                 let curF = f + df;
-                
                 // Track if we are starting in water
                 const startingInWater = isWater(tFrom);
-
                 while (curR >= 0 && curR < SIZE && curF >= 0 && curF < SIZE) {
                     const tTo = terrain(curR, curF);
                     if (isImpassable(tTo)) break;
@@ -195,10 +193,8 @@
                     const tgt = bMatrix[curR][curF];
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
-                        
                         // Rule: If exiting water, stop after one square
                         if (startingInWater) break;
-                        
                         // Blockade: Stop sliding on forest or water
                         if (isWater(tTo) || isForest(tTo)) break; 
                     } else {
@@ -215,7 +211,6 @@
                 }
             });
         }
-            
         else if (["N", "K"].includes(p.type)) {
             const steps = directions[p.type];
             steps.forEach(([dr, df]) => {
@@ -288,7 +283,7 @@
     // ==========================================================================
     // 6. Deep Meta AI Architecture
     // ==========================================================================
-function evaluateBoard(bMatrix) {
+    function evaluateBoard(bMatrix) {
         let score = 0;
         // Central range for 14x14 board (indices 5, 6, 7, 8)
         const centerStart = 5;
@@ -302,12 +297,18 @@ function evaluateBoard(bMatrix) {
                     // Base value
                     let cellScore = p.color === "w" ? val : -val;
                     
-                    // Positional Bonus: Control the center
+                    // 1. Positional Bonus: Control the center
                     if (r >= centerStart && r <= centerEnd && f >= centerStart && f <= centerEnd) {
                         // Bonus for Pawns and Knights specifically for center control
                         if (p.type === 'P' || p.type === 'N') {
                             cellScore += (p.color === "w" ? 5 : -5);
                         }
+                    }
+
+                    // 2. Development Bonus (Penalty for pieces on back rank)
+                    const isHomeRank = (p.color === "b" && r === 0) || (p.color === "w" && r === 13);
+                    if (isHomeRank && (p.type === 'N' || p.type === 'B' || p.type === 'Q')) {
+                        cellScore += (p.color === "w" ? -10 : 10);
                     }
                     
                     score += cellScore;
