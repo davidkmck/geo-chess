@@ -179,7 +179,7 @@
                 }
             });
         } 
-        else if (["R", "B", "Q"].includes(p.type)) {
+else if (["R", "B", "Q"].includes(p.type)) {
             const dirs = directions[p.type];
             dirs.forEach(([dr, df]) => {
                 let curR = r + dr;
@@ -191,23 +191,24 @@
                     const tgt = bMatrix[curR][curF];
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
-                        // REFINED: Break only on Water/Lakes, allow free movement in Forest
-                        if (isWater(tTo) && tTo !== "ford") break; 
+                        // REVISED: If it's a forest, we allow entry (the push above),
+                        // but we MUST break the loop so the piece cannot slide through it.
+                        if (isWater(tTo) || isForest(tTo)) break; 
                     } else {
+                        // Capture logic:
                         if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
                             moves.push({ r: curR, f: curF });
                         }
+                        // Always break on collision with a piece
                         break;
                     }
-
-                    // REFINED: Only restrict sliding if starting in Water
-                    if (isWater(tFrom) && tFrom !== "ford") break; 
                     
                     curR += dr;
                     curF += df;
                 }
             });
         }
+            
         else if (["N", "K"].includes(p.type)) {
             const steps = directions[p.type];
             steps.forEach(([dr, df]) => {
