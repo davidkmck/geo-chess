@@ -5,26 +5,66 @@
     --border-color: #333333;
     --text-main: #e0e0e0;
     --text-muted: #aaaaaa;
+    
+    /* Core Accents */
     --accent-gold: #ffc107;
+    --accent-gold-hover: #e0a800;
+    
+    /* Terrain Matrix Colors */
     --clr-light: #e9edcc;
     --clr-dark: #779556;
     --clr-mountain: #666666;
     --clr-forest: #2e5c1e;
     --clr-river: #2a6f97;
     --clr-lake: #1a4968;
-    --clr-ford: #8b5a2b;
+    --clr-ford: #8b5a2b; 
 }
 
-/* --- STRUCTURE (The missing piece) --- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.5;
+    overflow-x: hidden;
+    padding-bottom: 40px;
+}
+
+/* ==========================================================================
+   1. Headers & Panels
+   ========================================================================== */
+.controls-header { display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-card); padding: 6px 12px; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
+.header-left, .header-right { display: flex; align-items: center; gap: 10px; }
+.header-left h1 { font-size: 1.2rem; font-weight: 700; color: #fff; }
+
+.btn-ghost { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; }
+.btn-ghost:hover:not(:disabled) { background-color: #333; border-color: #555; }
+.btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-primary { background-color: var(--accent-gold); color: #111; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s ease; }
+.btn-primary:hover { background-color: var(--accent-gold-hover); }
+
+.game-layout { display: flex; flex-direction: column; align-items: center; max-width: 1300px; margin: 0 auto; padding: 12px; gap: 20px; }
+.board-container-wrapper { display: flex; flex-direction: row; align-items: center; justify-content: center; position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
+.left-control-stack { display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 300px; margin-right: 14px; z-index: 10; flex-shrink: 0; }
+.vertical-slider { -webkit-appearance: slider-vertical; writing-mode: bt-lr; width: 24px; height: 140px; padding: 0; margin: 8px 0; cursor: pointer; }
+
+/* ==========================================================================
+   2. Master Board Grid
+   ========================================================================== */
+.board-outer { position: relative; width: 100%; max-width: 560px; aspect-ratio: 1 / 1; background-color: var(--bg-board-edge); border: 2px solid var(--border-color); border-radius: 6px; overflow: hidden; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6); }
+
 .board {
     display: grid !important;
     grid-template-columns: repeat(14, 1fr);
     grid-template-rows: repeat(14, 1fr);
     width: 100%;
-    max-width: 560px;
-    aspect-ratio: 1 / 1;
-    margin: 0 auto;
-    border: 2px solid var(--border-color);
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    transform-origin: top left;
+    transition: transform 0.15s ease-out;
 }
 
 .cell {
@@ -35,31 +75,64 @@
     justify-content: center;
     position: relative;
     box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .cell.light { background-color: var(--clr-light); }
 .cell.dark { background-color: var(--clr-dark); }
 
-/* --- Piece Visibility --- */
-.piece { font-size: 20px; cursor: pointer; z-index: 2; pointer-events: none; }
-.piece.white { color: #ffffff !important; text-shadow: 0 0 4px #000; font-weight: bold; }
-.piece.black { color: #000000 !important; text-shadow: 0 0 2px #fff; font-weight: bold; }
+/* Solid Full-Square Terrains */
+.cell.terrain-mountain { background-color: var(--clr-mountain); }
+.cell.terrain-forest { background-color: var(--clr-forest); }
+.cell.terrain-river { background-color: var(--clr-river); }
+.cell.terrain-lake { background-color: var(--clr-lake); }
+.cell.terrain-ford { background-color: var(--clr-ford); border: 2px dashed rgba(255, 255, 255, 0.35); }
 
-/* --- Organic Terrain --- */
-.terrain-mountain { background-color: var(--clr-mountain); }
-.terrain-forest { background-color: var(--clr-forest); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
-.terrain-river { 
-    background: linear-gradient(135deg, var(--clr-river) 25%, transparent 25%),
-                linear-gradient(225deg, var(--clr-river) 25%, transparent 25%);
-    background-size: 50% 50%; background-color: var(--clr-river); 
-}
-.terrain-lake { background-color: var(--clr-lake); }
-.terrain-ford { background-color: var(--clr-ford); }
+/* ==========================================================================
+   3. Pieces & Highlights
+   ========================================================================== */
+.piece { font-size: 26px; z-index: 4; cursor: grab; transition: transform 0.1s ease; user-select: none; }
+.piece.white { color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 1px rgba(0,0,0,0.9); font-weight: bold; }
+.piece.black { color: #000000 !important; text-shadow: 0 1px 1px rgba(255,255,255,0.4), 0 0 1px rgba(255,255,255,0.2); font-weight: bold; }
+.piece:active { cursor: grabbing; }
 
-/* --- UI Hiding Logic --- */
-.mini-map.hidden { display: none !important; }
+.cell.selected { box-shadow: inset 0 0 0 3px #ffeb3b; z-index: 5; }
+.cell.legal-move::after { content: ''; width: 28%; height: 28%; background-color: rgba(0, 0, 0, 0.3); border-radius: 50%; pointer-events: none; }
+.cell.legal-capture::after { content: ''; position: absolute; width: 84%; height: 84%; border: 3px solid rgba(217, 4, 41, 0.8); border-radius: 50%; pointer-events: none; }
+.cell.last-move-source { background-color: rgba(255, 235, 59, 0.35) !important; }
+.cell.last-move-target { background-color: rgba(255, 235, 59, 0.45) !important; }
 
+/* ==========================================================================
+   4. Zen Mode, Labels & Meta Dashboards
+   ========================================================================== */
 body.zen-active .controls-header,
 body.zen-active .game-panels,
 body.zen-active .left-control-stack,
 body.zen-active .labels { display: none !important; }
+
+.labels { position: absolute; display: grid; pointer-events: none; font-family: monospace; font-size: 9px; font-weight: bold; color: rgba(255,255,255,0.4); z-index: 10; }
+.ranks-labels { left: 4px; top: 0; height: 100%; grid-template-rows: repeat(14, 1fr); align-items: center; }
+.files-labels { bottom: 4px; left: 0; width: 100%; grid-template-columns: repeat(14, 1fr); justify-items: center; }
+
+.game-panels { display: flex; flex-direction: column; width: 100%; max-width: 600px; gap: 16px; }
+.panel-card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; }
+.panel-card h3 { font-size: 14px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+.log-scroll-frame { max-height: 120px; overflow-y: auto; border: 1px solid #1c1c1c; background-color: #181818; border-radius: 4px; }
+.move-log-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 4px; padding: 8px; list-style: none; }
+.move-log-list li { font-family: monospace; font-size: 12px; padding: 3px 6px; background-color: #222; border-radius: 3px; cursor: pointer; text-align: center; }
+.move-log-list li:hover { background-color: #2b2b2b; }
+.move-log-list li.active { background-color: rgba(255, 193, 7, 0.15); border: 1px solid var(--accent-gold); color: var(--accent-gold); }
+
+.legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.key-patch { width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.15); }
+.key-patch.plain { background-color: var(--clr-light); }
+.key-patch.home { background-color: rgba(255,255,255,0.2); background-blend-mode: overlay; }
+.key-patch.mountain { background-color: var(--clr-mountain); }
+.key-patch.forest { background-color: var(--clr-forest); }
+.key-patch.river { background-color: var(--clr-river); }
+.key-patch.lake { background-color: var(--clr-lake); }
+.key-patch.ford { background-color: var(--clr-ford); border: 1px dashed rgba(255,255,255,0.35); }
+
+.hidden { display: none !important; }
