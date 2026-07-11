@@ -285,17 +285,13 @@ body {
 .cell.last-move-source { background-color: rgba(255, 235, 59, 0.35) !important; }
 .cell.last-move-target { background-color: rgba(255, 235, 59, 0.45) !important; }
 
-/* Dynamic Scaling Vector Glyphs */
+/* Dynamic Scaling Vector Glyphs - FIXED RELATIVE PERCENTAGE MODEL */
 .piece {
-    font-size: 5.8vw;
+    font-size: 68%;
     line-height: 1;
     z-index: 4;
     cursor: grab;
     transition: transform 0.1s ease;
-}
-
-@media (min-width: 540px) {
-    .piece { font-size: 27px; }
 }
 
 .piece.white {
@@ -314,7 +310,6 @@ body {
     pointer-events: none;
     z-index: 9999;
     opacity: 0.85;
-    transform: translate(-50%, -50%);
 }
 .cell.dragging-source .piece { opacity: 0.2; }
 
@@ -521,11 +516,11 @@ body {
 .key-patch.ford { background-color: var(--clr-ford); border: 1px dashed #bbb; }
 
 /* ==========================================================================
-   9. Master Board Rank/File Alphabetic Typography Labels
+   9. Master Board Rank/File Alphabetic Typography Labels - GRID ALIGNED
    ========================================================================== */
 .labels {
     position: absolute;
-    display: flex;
+    display: grid;
     pointer-events: none;
     font-family: monospace;
     font-size: 9px;
@@ -534,18 +529,18 @@ body {
     z-index: 10;
 }
 .ranks-labels {
-    left: 2px;
+    left: 4px;
     top: 0;
     height: 100%;
-    flex-direction: column;
-    justify-content: space-around;
+    grid-template-rows: repeat(14, 1fr);
+    align-items: center;
 }
 .files-labels {
-    bottom: 2px;
+    bottom: 4px;
     left: 0;
     width: 100%;
-    flex-direction: row;
-    justify-content: space-around;
+    grid-template-columns: repeat(14, 1fr);
+    justify-items: center;
 }
 
 /* ==========================================================================
