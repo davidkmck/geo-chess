@@ -252,8 +252,7 @@
   function isLegalTarget(r, f) {
     return legalTargets.some((m) => m.r === r && m.f === f);
   }
-
-  function render() {
+function render() {
     boardEl.innerHTML = "";
     const activeSnapshot = history[currentIndex];
     const lm = activeSnapshot ? activeSnapshot.lastMove : null;
@@ -303,6 +302,68 @@
       }
     }
 
+    turnIndicator.innerHTML = `<span class="turn-dot"></span>${turn === "w" ? "White" : "Black"} to move`;
+    turnIndicator.className = "turn-pill " + (turn === "w" ? "turn-w" : "turn-b");
+    boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
+
+    // Apply the active layout scale transform
+    boardEl.style.transform = `scale(${zoomScale})`;
+
+    if (gameOver) {
+      winMessage.textContent = gameOverText;
+      winOverlay.classList.remove("hidden");
+    } else {
+      winOverlay.classList.add("hidden");
+    }
+
+    undoBtn.disabled = currentIndex <= 0;
+    redoBtn.disabled = currentIndex >= history.length - 1;
+    renderMoveLog();
+  }
+
+  function makeMove(fr, ff, move) {
+    const tr = move.r, tf = move.f;
+    const moving = board[fr][ff];
+    const movingType = moving.type;
+    const movingColor = moving.color;
+    const captured = board[tr][tf];
+
+    board[tr][tf] = moving;
+    board[fr][ff] = null;
+    moving.moved = true;
+
+    if (move.castle) {
+      const rook = board[move.rookFrom.r][move.rookFrom.f];
+      board[move.rookTo.r][move.rookTo.f] = rook;
+      board[move.rookFrom.r][move.rookFrom.f] = null;
+      rook.moved = true;
+    }
+
+    let wasPromotion = false;
+    if (moving.type === "P") {
+      const lastRank = moving.color === "w" ? SIZE - 1 : 0;
+      if (tr === lastRank) {
+        moving.type = "Q";
+        wasPromotion = true;
+      }
+    }
+
+    const desc = describeMove(fr, ff, move, movingType, movingColor, captured, wasPromotion);
+
+    if (captured && captured.type === "K") {
+      gameOver = true;
+      gameOverText = (movingColor === "w" ? "White" : "Black") + " wins";
+    } else {
+      turn = turn === "w" ? "b" : "w";
+    }
+
+    // Smoothly zoom out to standard scale view
+    zoomScale = 1;
+
+    // Capture explicit locations inside move payload for tracking highlights
+    commitHistory(desc, { from: { r: fr, f: ff }, to: { r: tr, f: tf } });
+  }
+  
     turnIndicator.innerHTML = `<span class="turn-dot"></span>${turn === "w" ? "White" : "Black"} to move`;
     turnIndicator.className = "turn-pill " + (turn === "w" ? "turn-w" : "turn-b");
     boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
