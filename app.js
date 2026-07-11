@@ -5,19 +5,19 @@
   const FILES = "abcdefghijklmn".split("");
 
   // ---- Board state ----
-  // board[rank][file], rank 0 = rank "1" (White's home), rank 13 = rank "14" (Black's home)
-  // piece: { type: 'R'|'N'|'B'|'Q'|'K'|'P', color: 'w'|'b' }
   let board = [];
   let turn = "w";
   let selected = null; // {r, f}
   let legalTargets = []; // [{r,f}]
   let gameOver = false;
   let gameOverText = "";
+  
+  // New UI States
+  let isFlipped = false;
+  let zoomScale = 1;
 
   // ---- History (undo/redo + jump-to-any-point) ----
-  // history[i] is a full snapshot of the game state after i plies have been
-  // played (history[0] is the starting position). moveLog[i] describes the
-  // move that produced history[i+1] from history[i].
+  // Included lastMove: { from: {r,f}, to: {r,f} } in snapshots to persistent-track history jumps
   let history = [];
   let moveLog = [];
   let currentIndex = 0;
@@ -25,17 +25,16 @@
   const BACK_RANK_FILES = { 3: "R", 4: "N", 5: "B", 6: "Q", 7: "K", 8: "B", 9: "N", 10: "R" };
 
   // ---- Terrain ----
-  // 0-indexed board: r=0..13 is rank 1..14, f=0..13 is file a..n.
-  // Home zones (ranks 1-2 and 13-14, i.e. r in {0,1,12,13}) are always
-  // terrain-free by design, so castling is never affected by terrain.
-  // This is the same asymmetric layout designed earlier: mountains on
-  // opposite flanks for each side, one lake, a single-rank river with
-  // two bridges (fords).
   function terrain(r, f) {
-    // mountains: impassable for everyone except a knight's jump (which may
-    // still not land on one)
+    // 1. Mountains (Impassable blockades)
     if (r >= 3 && r <= 4 && f >= 1 && f <= 2) return "mountain"; // White-side flank
     if (r >= 9 && r <= 10 && f >= 10 && f <= 12) return "mountain"; // Black-side flank
+    
+    // 2. Thick Forest (Green - behaves like mountain blocks for path lines)
+    if (r >= 3 && r <= 4 && f >= 11 && f <= 12) return "forest"; // White-side right flank forest
+    if (r >= 9 && r <= 10 && f >= 1 && f <= 3) return "forest"; // Black-side left flank forest
+
+    // 3. Water Hazards
     if (r === 8 && f >= 6 && f <= 8) return "lake";
     if (r === 6) {
       if (f === 3 || f === 9) return "ford";
@@ -45,12 +44,9 @@
   }
 
   function isWater(t) { return t === "river" || t === "lake"; }
-  function isMountain(t) { return t === "mountain"; }
+  function isImpassable(t) { return t === "mountain" || t === "forest"; }
   function isHomeRank(r) { return r <= 1 || r >= SIZE - 2; }
 
-  // A move may capture into/through water unless it is a continued wade —
-  // i.e. moving from one water square to another. Entering water from dry
-  // land, or exiting water onto dry land/a bridge, may always capture.
   function canCapture(fromTerrain, toTerrain) {
     return !(isWater(fromTerrain) && isWater(toTerrain));
   }
@@ -58,42 +54,28 @@
   function freshBoard() {
     const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
     for (let f = 0; f < SIZE; f++) {
-      // White back rank + pawns
       if (BACK_RANK_FILES[f]) b[0][f] = { type: BACK_RANK_FILES[f], color: "w", moved: false };
       b[1][f] = { type: "P", color: "w", moved: false };
-      // Black back rank + pawns
       b[SIZE - 2][f] = { type: "P", color: "b", moved: false };
       if (BACK_RANK_FILES[f]) b[SIZE - 1][f] = { type: BACK_RANK_FILES[f], color: "b", moved: false };
     }
     return b;
   }
 
-  function inBounds(r, f) {
-    return r >= 0 && r < SIZE && f >= 0 && f < SIZE;
-  }
-
-  function pieceAt(b, r, f) {
-    return b[r][f];
-  }
+  function inBounds(r, f) { return r >= 0 && r < SIZE && f >= 0 && f < SIZE; }
+  function pieceAt(b, r, f) { return b[r][f]; }
 
   // ---- Move generation ----
-  // A sliding piece (R/B/Q) behaves normally over plain ground and bridges.
-  // Reaching a river/lake square that isn't a bridge, it may step onto that
-  // one water square and must stop there that turn (single-step entry).
-  // Once a piece's own square is water, it can only move one square per
-  // turn in one of its own directions (forward, sideways along the water,
-  // or retreat) while wading.
   function slideMoves(b, r, f, color, directions) {
     const myTerrain = terrain(r, f);
     const moves = [];
 
     if (isWater(myTerrain)) {
-      // Wading: exactly one square, no continued sliding.
       for (const [dr, df] of directions) {
         const nr = r + dr, nf = f + df;
         if (!inBounds(nr, nf)) continue;
         const t = terrain(nr, nf);
-        if (isMountain(t)) continue;
+        if (isImpassable(t)) continue;
         const occ = pieceAt(b, nr, nf);
         if (!occ) {
           moves.push({ r: nr, f: nf });
@@ -108,15 +90,15 @@
       let nr = r + dr, nf = f + df;
       while (inBounds(nr, nf)) {
         const t = terrain(nr, nf);
-        if (isMountain(t)) break; // hard wall
+        if (isImpassable(t)) break; 
 
         const occ = pieceAt(b, nr, nf);
         if (!occ) {
           moves.push({ r: nr, f: nf });
-          if (isWater(t)) break; // single-step entry into water; stop here
+          if (isWater(t)) break; 
         } else {
-          if (occ.color !== color) moves.push({ r: nr, f: nf }); // entering water via capture is fine
-          break; // occupied square always ends the slide
+          if (occ.color !== color) moves.push({ r: nr, f: nf }); 
+          break; 
         }
         nr += dr; nf += df;
       }
@@ -139,15 +121,11 @@
       case "B": return slideMoves(b, r, f, color, BISHOP_DIRS);
       case "Q": return slideMoves(b, r, f, color, QUEEN_DIRS);
       case "N": {
-        // Knights ignore terrain entirely in transit, and may land in water,
-        // but can never land on a mountain (the one restriction that applies
-        // to them). No water-capture restriction either — a knight was
-        // never impeded by the water in the first place.
         const moves = [];
         for (const [dr, df] of KNIGHT_OFFSETS) {
           const nr = r + dr, nf = f + df;
           if (!inBounds(nr, nf)) continue;
-          if (isMountain(terrain(nr, nf))) continue;
+          if (isImpassable(terrain(nr, nf))) continue;
           const occ = pieceAt(b, nr, nf);
           if (!occ || occ.color !== color) moves.push({ r: nr, f: nf });
         }
@@ -160,18 +138,11 @@
           const nr = r + dr, nf = f + df;
           if (!inBounds(nr, nf)) continue;
           const t = terrain(nr, nf);
-          if (isMountain(t)) continue;
+          if (isImpassable(t)) continue;
           const occ = pieceAt(b, nr, nf);
           if (!occ) moves.push({ r: nr, f: nf });
           else if (occ.color !== color && canCapture(myTerrain, t)) moves.push({ r: nr, f: nf });
         }
-        // Castling: works regardless of how many squares separate king and
-        // rook — the king always moves two squares, the rook always lands on
-        // the square the king passed over. Requires neither piece has moved,
-        // and every square between them is empty. Home ranks are always
-        // terrain-free by design, so terrain never interferes with this.
-        // (No check-safety filtering yet, consistent with this prototype
-        // skipping check detection.)
         if (!piece.moved) {
           for (const dir of [-1, 1]) {
             let nf = f + dir;
@@ -203,16 +174,13 @@
 
         if (inBounds(oneR, f)) {
           const tOne = terrain(oneR, f);
-          if (!isMountain(tOne) && !pieceAt(b, oneR, f)) {
+          if (!isImpassable(tOne) && !pieceAt(b, oneR, f)) {
             moves.push({ r: oneR, f });
-            // The two-square opening only ever starts from dry ground and
-            // only completes if both squares ahead are dry — a pawn already
-            // wading can't leap two squares, and it can't leap over water either.
             if (r === startRank && !isWater(myTerrain) && !isWater(tOne)) {
               const twoR = r + dir * 2;
               if (inBounds(twoR, f)) {
                 const tTwo = terrain(twoR, f);
-                if (!isMountain(tTwo) && !isWater(tTwo) && !pieceAt(b, twoR, f)) {
+                if (!isImpassable(tTwo) && !isWater(tTwo) && !pieceAt(b, twoR, f)) {
                   moves.push({ r: twoR, f });
                 }
               }
@@ -224,7 +192,7 @@
           const nf = f + df;
           if (!inBounds(oneR, nf)) continue;
           const tDiag = terrain(oneR, nf);
-          if (isMountain(tDiag)) continue;
+          if (isImpassable(tDiag)) continue;
           const occ = pieceAt(b, oneR, nf);
           if (occ && occ.color !== color && canCapture(myTerrain, tDiag)) moves.push({ r: oneR, f: nf });
         }
@@ -250,25 +218,35 @@
   const aiDifficulty = document.getElementById("aiDifficulty");
   const aiThinkingEl = document.getElementById("aiThinking");
 
-  // Both colors render with the same solid silhouette glyphs (the "white" chess
-  // Unicode characters are hollow outlines in most fonts, which lets the dark
-  // square bleed through their interior — using solid shapes for both and
-  // coloring them via CSS keeps white pieces genuinely opaque.
+  // Create Flip Button element and drop it dynamically next to Reset
+  const flipBtn = document.createElement("button");
+  flipBtn.className = "btn-ghost";
+  flipBtn.style.marginLeft = "0.5rem";
+  flipBtn.innerHTML = "🔄 Flip Board";
+  resetBtn.parentNode.appendChild(flipBtn);
+
   const GLYPHS = { R: "\u265C", N: "\u265E", B: "\u265D", Q: "\u265B", K: "\u265A", P: "\u265F" };
 
   function buildLabels() {
     ranksEl.innerHTML = "";
-    for (let r = 0; r < SIZE; r++) {
+    filesEl.innerHTML = "";
+    
+    // Order dynamically handles flipping coordinates labels
+    const range = Array.from({length: SIZE}, (_, i) => i);
+    const rankOrder = isFlipped ? range : [...range].reverse();
+    const fileOrder = isFlipped ? [...range].reverse() : range;
+
+    rankOrder.forEach(r => {
       const span = document.createElement("span");
       span.textContent = r + 1;
       ranksEl.appendChild(span);
-    }
-    filesEl.innerHTML = "";
-    for (let f = 0; f < SIZE; f++) {
+    });
+
+    fileOrder.forEach(f => {
       const span = document.createElement("span");
       span.textContent = FILES[f];
       filesEl.appendChild(span);
-    }
+    });
   }
 
   function isLegalTarget(r, f) {
@@ -277,14 +255,27 @@
 
   function render() {
     boardEl.innerHTML = "";
-    // top rank (13) rendered first so rank 1 ends up at bottom visually
-    for (let r = SIZE - 1; r >= 0; r--) {
-      for (let f = 0; f < SIZE; f++) {
+    const activeSnapshot = history[currentIndex];
+    const lm = activeSnapshot ? activeSnapshot.lastMove : null;
+
+    // Build the grid indices dynamically depending on flip state
+    for (let i = 0; i < SIZE; i++) {
+      const r = isFlipped ? i : (SIZE - 1 - i);
+      for (let j = 0; j < SIZE; j++) {
+        const f = isFlipped ? (SIZE - 1 - j) : j;
+        
         const cell = document.createElement("div");
         const t = terrain(r, f);
         let cls = "cell " + (((r + f) % 2 === 0) ? "dark" : "light");
         if (t !== "plain") cls += " terrain-" + t;
         if (isHomeRank(r)) cls += " home-rank";
+        
+        // Dynamic last-move structural highlight checks
+        if (lm) {
+          if (lm.from.r === r && lm.from.f === f) cls += " last-move-source";
+          if (lm.to.r === r && lm.to.f === f) cls += " last-move-target";
+        }
+
         cell.className = cls;
         cell.dataset.r = r;
         cell.dataset.f = f;
@@ -315,6 +306,9 @@
     turnIndicator.innerHTML = `<span class="turn-dot"></span>${turn === "w" ? "White" : "Black"} to move`;
     turnIndicator.className = "turn-pill " + (turn === "w" ? "turn-w" : "turn-b");
     boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
+
+    // Apply the active layout scale transform
+    boardEl.style.transform = `scale(${zoomScale})`;
 
     if (gameOver) {
       winMessage.textContent = gameOverText;
@@ -352,18 +346,12 @@
     }
   }
 
-  // ---- Interaction: tap-to-select-then-tap-to-move, and drag-and-drop ----
-  // Both are driven from the same pointer events. A pointerdown on your own
-  // piece both (a) selects it, exactly like a tap, and (b) arms a drag
-  // candidate. If the pointer moves past a small threshold before release,
-  // it becomes a drag; otherwise release is treated as a plain tap.
-  const DRAG_THRESHOLD = 6; // px
-  let dragCandidate = null; // {r, f, pointerId, startX, startY, moved, ghost, cellRect}
+  // ---- Interaction Engine ----
+  const DRAG_THRESHOLD = 6; 
+  let dragCandidate = null; 
 
   function clearDragVisuals() {
-    if (dragCandidate && dragCandidate.ghost) {
-      dragCandidate.ghost.remove();
-    }
+    if (dragCandidate && dragCandidate.ghost) { dragCandidate.ghost.remove(); }
     boardEl.querySelectorAll(".dragging-source").forEach((el) => el.classList.remove("dragging-source"));
   }
 
@@ -384,12 +372,10 @@
   }
 
   function onPointerDown(e) {
-    if (gameOver || dragCandidate) return;
+    if (gameOver || dragCandidate || e.pointerType === "touch" && touchState.pinching) return;
     const r = Number(e.currentTarget.dataset.r);
     const f = Number(e.currentTarget.dataset.f);
 
-    // Tapping a highlighted destination while something else is selected:
-    // execute the move immediately, no drag involved.
     if (selected && !(selected.r === r && selected.f === f)) {
       const move = legalTargets.find((m) => m.r === r && m.f === f);
       if (move) {
@@ -476,7 +462,6 @@
       return;
     }
 
-    // Plain tap release (no drag): tapping an already-selected piece deselects it.
     dragCandidate = null;
     if (wasAlreadySelected) {
       selected = null;
@@ -494,10 +479,42 @@
     render();
   }
 
+  // ---- Pinch-To-Zoom Gesture Event Handling ----
+  const boardOuterEl = document.querySelector(".board-outer");
+  let touchState = { pinching: false, startDist: 0, startScale: 1 };
+
+  boardOuterEl.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) {
+      touchState.pinching = true;
+      touchState.startScale = zoomScale;
+      touchState.startDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (dragCandidate) { clearDragVisuals(); dragCandidate = null; }
+    }
+  }, { passive: true });
+
+  boardOuterEl.addEventListener("touchmove", (e) => {
+    if (touchState.pinching && e.touches.length === 2) {
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = currentDist / touchState.startDist;
+      // Limits scaling zoom safely bounds between 1x and 2.5x standard width profile
+      zoomScale = Math.min(Math.max(touchState.startScale * factor, 1), 2.5);
+      boardEl.style.transform = `scale(${zoomScale})`;
+    }
+  }, { passive: true });
+
+  boardOuterEl.addEventListener("touchend", (e) => {
+    if (e.touches.length < 2) {
+      touchState.pinching = false;
+    }
+  }, { passive: true });
+
   // ---- AI opponent ----
-  // Reuses generateMoves exactly as-is (including every terrain rule) by
-  // operating on cloned boards rather than the live game board, so the
-  // engine never sees a different rule set than the human plays against.
   const PIECE_VALUE = { P: 100, N: 300, B: 300, R: 500, Q: 900, K: 100000 };
 
   function evaluate(b) {
@@ -507,8 +524,6 @@
         const p = b[r][f];
         if (!p) continue;
         let v = PIECE_VALUE[p.type];
-        // Tiny centralization nudge for non-pawn, non-king pieces so the
-        // engine doesn't leave minor/major pieces stranded on the rim.
         if (p.type !== "K" && p.type !== "P") {
           const dist = Math.abs(r - 6.5) + Math.abs(f - 6.5);
           v += (13 - dist) * 2;
@@ -533,9 +548,7 @@
     return out;
   }
 
-  function cloneBoard(b) {
-    return JSON.parse(JSON.stringify(b));
-  }
+  function cloneBoard(b) { return JSON.parse(JSON.stringify(b)); }
 
   function applyMoveToBoard(b, from, move) {
     const moving = b[from.r][from.f];
@@ -555,8 +568,6 @@
     return b;
   }
 
-  // Cheap move ordering (captures first, biggest prize first) — alpha-beta
-  // prunes far more effectively when strong moves are tried early.
   function orderMoves(b, moves) {
     return moves
       .map((m) => {
@@ -569,7 +580,6 @@
 
   function minimax(b, depth, alpha, beta, colorToMove) {
     if (depth === 0) return { score: evaluate(b) };
-
     const moves = orderMoves(b, allLegalMoves(b, colorToMove));
     if (moves.length === 0) return { score: evaluate(b) };
 
@@ -580,7 +590,6 @@
       const captured = b[mv.move.r][mv.move.f];
       let score;
       if (captured && captured.type === "K") {
-        // Capturing the king ends the game outright — no need to search deeper.
         score = colorToMove === "w" ? 999999 : -999999;
       } else {
         const child = applyMoveToBoard(cloneBoard(b), mv.from, mv.move);
@@ -614,8 +623,6 @@
     updateAIThinkingUI(true);
     const expectedIndex = currentIndex;
 
-    // Defer so the "thinking" indicator actually paints before the
-    // (synchronous, potentially slow-ish) search blocks the main thread.
     setTimeout(() => {
       let result = null;
       try {
@@ -626,8 +633,6 @@
       aiThinking = false;
       updateAIThinkingUI(false);
 
-      // If the user undid/reset/redid while the AI was thinking, discard
-      // this move — it was computed against a position that's no longer current.
       if (currentIndex !== expectedIndex || gameOver || turn !== aiColor) return;
       if (!result || !result.move) return;
 
@@ -640,9 +645,7 @@
   }
 
   function describeMove(fr, ff, move, movingType, movingColor, captured, wasPromotion) {
-    if (move.castle) {
-      return move.f > ff ? "O-O" : "O-O-O";
-    }
+    if (move.castle) { return move.f > ff ? "O-O" : "O-O-O"; }
     const from = FILES[ff] + (fr + 1);
     const to = FILES[move.f] + (move.r + 1);
     const sep = captured ? "x" : "-";
@@ -669,7 +672,6 @@
       rook.moved = true;
     }
 
-    // auto-promotion at the far rank
     let wasPromotion = false;
     if (moving.type === "P") {
       const lastRank = moving.color === "w" ? SIZE - 1 : 0;
@@ -688,15 +690,17 @@
       turn = turn === "w" ? "b" : "w";
     }
 
-    commitHistory(desc);
+    // Capture explicit locations inside move payload for tracking highlights
+    commitHistory(desc, { from: { r: fr, f: ff }, to: { r: tr, f: tf } });
   }
 
-  function snapshot() {
+  function snapshot(lastMoveObj = null) {
     return {
       board: JSON.parse(JSON.stringify(board)),
       turn,
       gameOver,
-      gameOverText
+      gameOverText,
+      lastMove: lastMoveObj
     };
   }
 
@@ -709,11 +713,10 @@
     legalTargets = [];
   }
 
-  function commitHistory(desc) {
-    // Making a move after undoing discards any redo-able future.
+  function commitHistory(desc, lastMoveObj = null) {
     history = history.slice(0, currentIndex + 1);
     moveLog = moveLog.slice(0, currentIndex);
-    history.push(snapshot());
+    history.push(snapshot(lastMoveObj));
     moveLog.push(desc);
     currentIndex = history.length - 1;
     render();
@@ -736,11 +739,19 @@
     legalTargets = [];
     gameOver = false;
     gameOverText = "";
-    history = [snapshot()];
+    zoomScale = 1; // Reset scale window view
+    history = [snapshot(null)];
     moveLog = [];
     currentIndex = 0;
     render();
   }
+
+  // Bind new board inverter button action
+  flipBtn.addEventListener("click", () => {
+    isFlipped = !isFlipped;
+    buildLabels();
+    render();
+  });
 
   resetBtn.addEventListener("click", resetGame);
   playAgainBtn.addEventListener("click", resetGame);
