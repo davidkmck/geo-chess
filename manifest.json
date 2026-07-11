@@ -1,8 +1,23 @@
 {
-  "name": "Geo-Chess",
-  "short_name": "Geo-Chess",
-  "start_url": ".",
+  "short_name": "Geo Chess",
+  "name": "Geo Chess - Big Board with Terrain",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#1a1a1a",
+  "theme_color": "#242424",
   "display": "standalone",
-  "background_color": "#14130f",
-  "theme-color": "#14130f"
+  "orientation": "portrait-primary"
 }
