@@ -690,6 +690,9 @@
       turn = turn === "w" ? "b" : "w";
     }
 
+    // 1. Reset the global zoom tracking variable back to standard scale
+    zoomScale = 1;
+    
     // Capture explicit locations inside move payload for tracking highlights
     commitHistory(desc, { from: { r: fr, f: ff }, to: { r: tr, f: tf } });
   }
