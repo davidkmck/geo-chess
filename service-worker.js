@@ -1,11 +1,11 @@
-const CACHE_NAME = "geo-chess-v3"; // Increment this version string whenever you push new updates!
+const CACHE_NAME = "geo-chess-v4"; // Increment this version string whenever you push new updates!
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./app.js",
   "./manifest.json",
-  "./icon.svg"
+  "./icon.png"
 ];
 
 // Install Event - Pre-caches assets firmly
