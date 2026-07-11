@@ -12,10 +12,10 @@
   let gameOver = false;
   let gameOverText = "";
   
-  // New Preset Layout & Camera States
-  // 0 = Full board with controls and labels
-  // 1 = Full board only (labels hidden)
-  // 2 = Zoomed in 8x8 viewport window
+  // Dynamic Preset Matrix Camera State Machine:
+  // 0 = Full board view including outer labels
+  // 1 = Full board viewport only (labels hidden)
+  // 2 = High Zoomed 8x8 responsive frame
   let zoomPreset = 0; 
   let panX = 0;
   let panY = 0;
@@ -23,20 +23,18 @@
   let startPanX = 0;
   let startPanY = 0;
 
-  // UI Component Visibility States
   let showLegend = true;
   let showHistory = true;
-
   let isFlipped = false;
 
-  // ---- History (undo/redo + jump-to-any-point) ----
+  // ---- History tracking ----
   let history = [];
   let moveLog = [];
   let currentIndex = 0;
 
   const BACK_RANK_FILES = { 3: "R", 4: "N", 5: "B", 6: "Q", 7: "K", 8: "B", 9: "N", 10: "R" };
 
-  // ---- Terrain ----
+  // ---- Terrain Rules Configurations ----
   function terrain(r, f) {
     if (r >= 3 && r <= 4 && f >= 1 && f <= 2) return "mountain"; 
     if (r >= 9 && r <= 10 && f >= 10 && f <= 12) return "mountain"; 
@@ -74,7 +72,7 @@
   function inBounds(r, f) { return r >= 0 && r < SIZE && f >= 0 && f < SIZE; }
   function pieceAt(b, r, f) { return b[r][f]; }
 
-  // ---- Move generation ----
+  // ---- Legality Move Generators ----
   function slideMoves(b, r, f, color, directions) {
     const myTerrain = terrain(r, f);
     const moves = [];
@@ -211,7 +209,7 @@
     }
   }
 
-  // ---- Rendering & Elements UI ----
+  // ---- UI Setup Context Bindings ----
   const boardEl = document.getElementById("board");
   const ranksEl = document.getElementById("ranks");
   const filesEl = document.getElementById("files");
@@ -233,43 +231,16 @@
   const miniMapEl = document.getElementById("miniMap");
   const miniMapViewportEl = document.getElementById("miniMapViewport");
 
-  // Create UI Control Buttons Context Setup
-  const controlsRow = resetBtn.parentNode;
+  const zoomSlider = document.getElementById("zoomSlider");
+  const toggleLegendBtn = document.getElementById("toggleLegendBtn");
+  const toggleHistoryBtn = document.getElementById("toggleHistoryBtn");
 
-  const flipBtn = document.createElement("button");
-  flipBtn.className = "btn-ghost";
-  flipBtn.style.marginLeft = "0.5rem";
-  flipBtn.innerHTML = "🔄 Flip Board";
-  controlsRow.appendChild(flipBtn);
-
-  // Show/Hide Legend Button
-  const toggleLegendBtn = document.createElement("button");
-  toggleLegendBtn.className = "btn-ghost";
-  toggleLegendBtn.style.marginLeft = "0.5rem";
-  toggleLegendBtn.innerHTML = "🗺️ Hide Legend";
-  controlsRow.appendChild(toggleLegendBtn);
-
-  // Show/Hide History Button
-  const toggleHistoryBtn = document.createElement("button");
-  toggleHistoryBtn.className = "btn-ghost";
-  toggleHistoryBtn.style.marginLeft = "0.5rem";
-  toggleHistoryBtn.innerHTML = "📜 Hide History";
-  controlsRow.appendChild(toggleHistoryBtn);
-
-  // Zoom Level Preset Selector Cycle Button
-  const zoomPresetBtn = document.createElement("button");
-  zoomPresetBtn.className = "btn-primary";
-  zoomPresetBtn.style.marginLeft = "0.5rem";
-  zoomPresetBtn.innerHTML = "🔍 Zoom: Standard (1)";
-  controlsRow.appendChild(zoomPresetBtn);
-
-  const GLYPHS = { R: "\u265C", N: "\u265E", B: "\u265D", Q: "\u265B", K: "\u265A", P: "\u265F" };
+  const GLYPHS = { R: "♜", N: "♞", B: "♝", Q: "♛", K: "♚", P: "♟" };
 
   function buildLabels() {
     ranksEl.innerHTML = "";
     filesEl.innerHTML = "";
     
-    // Hide standard rank/file markers entirely if Preset 1 or Preset 2 is selected
     if (zoomPreset === 1 || zoomPreset === 2) {
       ranksEl.style.display = "none";
       filesEl.style.display = "none";
@@ -329,9 +300,7 @@
         cell.dataset.r = r;
         cell.dataset.f = f;
 
-        if (selected && selected.r === r && selected.f === f) {
-          cell.classList.add("selected");
-        }
+        if (selected && selected.r === r && selected.f === f) cell.classList.add("selected");
         if (isLegalTarget(r, f)) {
           cell.classList.add(pieceAt(board, r, f) ? "legal-capture" : "legal-move");
         }
@@ -340,11 +309,7 @@
         if (piece) {
           const span = document.createElement("span");
           span.className = "piece " + (piece.color === "w" ? "white" : "black");
-          
-          if (isLastMoveTarget) {
-            span.classList.add("last-moved-piece");
-          }
-          
+          if (isLastMoveTarget) span.classList.add("last-moved-piece");
           span.textContent = GLYPHS[piece.type];
           cell.appendChild(span);
         }
@@ -367,7 +332,7 @@
 
     boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
 
-    // Enforce dynamic layout configs via CSS styling states
+    // Enforce Hide/Show Structural Logic Toggles
     const legendEl = document.querySelector(".legend-card");
     if (legendEl) legendEl.style.display = showLegend ? "block" : "none";
     
@@ -414,9 +379,7 @@
 
   // ---- Dynamic Viewport Matrix Transforms & Mini-Map Sync ----
   function updateBoardTransform() {
-    // Determine target scale factoring active preset configuration boundaries
-    // Preset 0 & 1 scale = 1.0 (Full 14x14 grid fits viewport perfectly)
-    // Preset 2 scale = 14 / 8 = 1.75 (Creates a crisp 8x8 visible view window block)
+    // Zoom configurations: Preset 0 & 1 scale = 1.0; Preset 2 scale = 14 / 8 = 1.75
     const activeScale = zoomPreset === 2 ? 1.75 : 1;
 
     const outerRect = boardOuterEl.getBoundingClientRect();
@@ -427,7 +390,7 @@
       panX = Math.min(0, Math.max(panX, minX));
       panY = Math.min(0, Math.max(panY, minY));
     } else {
-      // Anchors coordinates firmly at 0 to completely prevent the board moving up/displacing
+      // Anchors coordinates perfectly at 0 when unzoomed to prevent displacement
       panX = 0;
       panY = 0;
     }
@@ -444,6 +407,7 @@
     }
     miniMapEl.classList.remove("hidden");
 
+    // Invert scale percentages to accurately track viewport bounding box bounds
     const widthPct = 100 / activeScale;
     const heightPct = 100 / activeScale;
 
@@ -460,12 +424,12 @@
     miniMapViewportEl.style.top = `${topPct}%`;
   }
 
-  // ---- Interaction & Dragging Engine ----
+  // ---- Native Dragging and Gesture Controls Engine ----
   const DRAG_THRESHOLD = 6; 
   let dragCandidate = null; 
 
   function clearDragVisuals() {
-    if (dragCandidate && dragCandidate.ghost) { dragCandidate.ghost.remove(); }
+    if (dragCandidate && dragCandidate.ghost) dragCandidate.ghost.remove();
     boardEl.querySelectorAll(".dragging-source").forEach((el) => el.classList.remove("dragging-source"));
   }
 
@@ -545,7 +509,7 @@
       }
     }
     if (dragCandidate.moved && dragCandidate.ghost) {
-      positionGhost(ghost, dragCandidate.cellRect, e.clientX, e.clientY);
+      positionGhost(dragCandidate.ghost, dragCandidate.cellRect, e.clientX, e.clientY);
     }
   }
 
@@ -593,7 +557,7 @@
     render();
   }
 
-  // ---- Precise Linear Viewport Panning Touch Gestures (Replaces Unstable Pinch Loop) ----
+  // ---- Viewport Matrix Linear Touch Panning Handler (8x8 Only) ----
   boardOuterEl.addEventListener("touchstart", (e) => {
     if (zoomPreset === 2 && e.touches.length === 1) {
       const targetCell = e.touches[0].target.closest(".cell");
@@ -615,16 +579,13 @@
     }
   }, { passive: true });
 
-  boardOuterEl.addEventListener("touchend", () => {
-    isPanning = false;
-  }, { passive: true });
+  boardOuterEl.addEventListener("touchend", () => { isPanning = false; }, { passive: true });
 
-  // ---- Mouse Event Nav Fallbacks (Right Click / Drag Panning) ----
+  // ---- Mouse Navigation Panning Backups ----
   boardOuterEl.addEventListener("mousedown", (e) => {
     if (zoomPreset === 2) {
       const targetCell = e.target.closest(".cell");
       const hasFriendlyPiece = targetCell && pieceAt(board, Number(targetCell.dataset.r), Number(targetCell.dataset.f))?.color === turn;
-      
       if (!hasFriendlyPiece || e.button === 2) { 
         isPanning = true;
         startPanX = e.clientX - panX;
@@ -640,13 +601,10 @@
     updateBoardTransform();
   });
 
-  window.addEventListener("mouseup", () => {
-    isPanning = false;
-  });
-
+  window.addEventListener("mouseup", () => { isPanning = false; });
   boardOuterEl.addEventListener("contextmenu", e => { if(zoomPreset === 2) e.preventDefault(); });
 
-  // ---- AI Opponent Engine ----
+  // ---- AI Engine ----
   const PIECE_VALUE = { P: 100, N: 300, B: 300, R: 500, Q: 900, K: 100000 };
 
   function evaluate(b) {
@@ -780,7 +738,7 @@
   }
 
   function describeMove(fr, ff, move, movingType, movingColor, captured, wasPromotion) {
-    if (move.castle) { return move.f > ff ? "O-O" : "O-O-O"; }
+    if (move.castle) return move.f > ff ? "O-O" : "O-O-O";
     const from = FILES[ff] + (fr + 1);
     const to = FILES[move.f] + (move.r + 1);
     const sep = captured ? "x" : "-";
@@ -862,7 +820,7 @@
     commitHistory(desc, { from: { r: fr, f: ff }, to: { r: tr, f: tf } });
   }
 
-  // ---- State Synchronization Matrix ----
+  // ---- State Synchronizations ----
   function snapshot(lastMoveObj = null) {
     return {
       board: JSON.parse(JSON.stringify(board)),
@@ -908,7 +866,6 @@
     legalTargets = [];
     gameOver = false;
     gameOverText = "";
-    // Maintain zoom preset but center positions explicitly
     panX = 0;
     panY = 0;
     history = [snapshot(null)];
@@ -917,9 +874,11 @@
     render();
   }
 
-  // ---- DOM Action Listeners ----
-  flipBtn.addEventListener("click", () => {
-    isFlipped = !isFlipped;
+  // ---- Event Interaction Mappings ----
+  zoomSlider.addEventListener("input", (e) => {
+    zoomPreset = Number(e.target.value);
+    panX = 0;
+    panY = 0;
     buildLabels();
     render();
   });
@@ -936,36 +895,22 @@
     render();
   });
 
-  zoomPresetBtn.addEventListener("click", () => {
-    zoomPreset = (zoomPreset + 1) % 3;
-    panX = 0;
-    panY = 0;
-    
-    if (zoomPreset === 0) {
-      zoomPresetBtn.innerHTML = "🔍 Zoom: Standard (1)";
-    } else if (zoomPreset === 1) {
-      zoomPresetBtn.innerHTML = "🔍 Zoom: Board Only (2)";
-    } else if (zoomPreset === 2) {
-      zoomPresetBtn.innerHTML = "🔍 Zoom: Focused 8x8 (3)";
-    }
-    
-    buildLabels();
-    render();
-  });
-
   resetBtn.addEventListener("click", resetGame);
   playAgainBtn.addEventListener("click", resetGame);
   undoBtn.addEventListener("click", undo);
   redoBtn.addEventListener("click", redo);
+  
   moveLogEl.addEventListener("click", (e) => {
     const li = e.target.closest("li");
     if (!li) return;
     goToIndex(Number(li.dataset.index));
   });
+  
   aiToggle.addEventListener("change", () => {
     aiEnabled = aiToggle.checked;
     maybeTriggerAI();
   });
+  
   aiDifficulty.addEventListener("change", () => {
     aiDepth = Number(aiDifficulty.value);
   });
