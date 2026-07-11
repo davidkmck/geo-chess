@@ -66,6 +66,7 @@
             offsets.forEach(o => {
                 let nr = r + o[0], nf = f + o[1];
                 if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
+                    // Knight ONLY respects Mountain (1) and Lake (4) as barriers.
                     if (board[nr][nf].terrain !== 1 && board[nr][nf].terrain !== 4) {
                         if (!board[nr][nf].piece || board[nr][nf].piece.color !== p.color) {
                             targets.push({ r: nr, f: nf });
@@ -100,8 +101,6 @@
         return targets;
     }
 
-  
-
     function drawBoard() {
         const boardEl = document.getElementById("board");
         if (!boardEl) return;
@@ -111,12 +110,12 @@
                 const cellEl = document.createElement("div");
                 cellEl.dataset.row = r; cellEl.dataset.file = f;
                 
-                // RESTORED: Map terrain classes
                 const terrainTypes = ["plain", "mountain", "forest", "river", "lake", "ford"];
                 cellEl.className = `cell ${(r+f)%2===0 ? 'light':'dark'} terrain-${terrainTypes[board[r][f].terrain]}`;
                 
                 if (board[r][f].piece) {
                     const pEl = document.createElement("span");
+                    // Use 'w' and 'b' classes to match PIECES object keys
                     pEl.className = `piece ${board[r][f].piece.color}`;
                     pEl.textContent = PIECES[board[r][f].piece.color][board[r][f].piece.type];
                     cellEl.appendChild(pEl);
@@ -128,6 +127,18 @@
     }
 
     function handleCellClick(e) { /* ... same as before ... */ }
-    function init() { setupInitialBoardState(); drawBoard(); }
+    function init() { 
+        setupInitialBoardState(); 
+        drawBoard(); 
+        
+        // Zen Mode listener
+        const zenBtn = document.getElementById("btn-zen");
+        if (zenBtn) {
+            zenBtn.addEventListener("click", () => {
+                document.body.classList.toggle("zen-active");
+            });
+        }
+    }
+    
     document.addEventListener("DOMContentLoaded", init);
 })();
