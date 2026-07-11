@@ -292,15 +292,15 @@ body {
     transition: transform 0.1s ease;
 }
 
-.piece.white {
-    color: #ffffff;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 1px rgba(0,0,0,0.9);
+/* Ensure piece colors are explicitly set */
+.piece.white { color: #ffffff !important; }
+.piece.black { color: #000000 !important; }
+
+/* Improve visibility on light squares */
+.piece {
+    text-shadow: 0 0 2px rgba(0,0,0,0.8);
+    font-weight: bold;
 }
-.piece.black {
-    color: #151515;
-    text-shadow: 0 1px 1px rgba(255,255,255,0.4), 0 0 1px rgba(255,255,255,0.2);
-}
-.piece:active { cursor: grabbing; }
 
 /* Drag and Drop Ghost Framework */
 .drag-ghost {
@@ -566,3 +566,10 @@ body.zen-active .board-outer {
     box-shadow: none;
     background: transparent;
 }
+
+body.zen-active .controls-header,
+body.zen-active .game-panels,
+body.zen-active .left-control-stack {
+    display: none !important;
+}
+
