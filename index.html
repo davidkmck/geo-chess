@@ -12,17 +12,86 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<style>
+  /* --- High Contrast Enhanced Terrain Overrides --- */
+  .terrain-mountain {
+    background-color: #1a1714 !important; /* Noticeably darker, commanding stone tone */
+    box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.85);
+  }
+  .terrain-forest {
+    background-color: #122d19 !important; /* Dense, deep wildwood green */
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.6);
+  }
+  .terrain-river, .terrain-lake {
+    background-color: #2563eb !important; /* Rich deep water blue */
+    /* Fine dark framing outlines outlining body borders */
+    box-shadow: inset 0 0 0 2px #1d4ed8, inset 0 0 8px rgba(0, 0, 0, 0.4);
+  }
+  .terrain-ford {
+    background-color: #3b82f6 !important;
+    border: 2px dashed #1d4ed8;
+  }
+
+  /* --- Last Move Accent Glow --- */
+  .last-moved-piece {
+    text-shadow: 0 0 8px #ffeb3b, 0 0 14px #ffeb3b !important;
+  }
+
+  /* --- Turn Status Panel Widgets --- */
+  .turn-widgets-container {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .turn-widget {
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.2;
+    filter: grayscale(90%);
+    border: 2px solid transparent;
+  }
+  .white-widget {
+    background-color: #ffffff;
+    color: #18181b;
+  }
+  .white-widget.active {
+    opacity: 1;
+    filter: grayscale(0%);
+    border-color: #f59e0b;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 0 5px rgba(245, 158, 11, 0.4);
+  }
+  .black-widget {
+    background-color: #27272a;
+    color: #f4f4f5;
+    border: 2px solid #3f3f46;
+  }
+  .black-widget.active {
+    opacity: 1;
+    filter: grayscale(0%);
+    border-color: #f59e0b;
+    box-shadow: 0 0 15px rgba(39, 39, 42, 0.7), 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+</style>
 </head>
 <body>
 
   <header class="app-header">
     <h1>Geo Chess <span class="accent">Chess</span></h1>
-    <p class="subtitle">14×14 board · same pieces · no terrain yet</p>
+    <p class="subtitle">14×14 board · same pieces</p>
   </header>
 
   <main>
     <div class="status-bar">
-      <span id="turnIndicator" class="turn-pill turn-w">White to move</span>
+      <!-- Dual Side Action Widgets (Illuminates conditionally based on active player turn) -->
+      <div class="turn-widgets-container">
+        <div id="widget-w" class="turn-widget white-widget active">White's Turn</div>
+        <div id="widget-b" class="turn-widget black-widget">Black's Turn</div>
+      </div>
       <button id="resetBtn" class="btn-reset" aria-label="Reset board">Reset</button>
     </div>
 
@@ -39,29 +108,25 @@
       <span id="aiThinking" class="ai-thinking hidden">Thinking…</span>
     </div>
 
+    <!-- Unified Board Frame Viewport Canvas Container -->
     <div class="board-outer">
       <div class="ranks" id="ranks"></div>
       <div class="board" id="board"></div>
       <div class="corner"></div>
       <div class="files" id="files"></div>
+      
+      <!-- Spatial PIP Mini-Map Overlay -->
+      <div id="miniMap" class="mini-map hidden">
+        <div id="miniMapViewport" class="mini-map-viewport"></div>
+      </div>
     </div>
-    
-<div class="board-outer">
-  <!-- Your existing ranks, files, and board elements -->
-  <div id="board" class="board"></div>
-  
-  <!-- Add this Mini-Map overlay -->
-  <div id="miniMap" class="mini-map hidden">
-    <div id="miniMapViewport" class="mini-map-viewport"></div>
-  </div>
-</div>
     
     <p class="hint">Tap a piece, then tap a highlighted square to move it. Drag also works.</p>
 
     <ul class="legend">
-      <li><span class="swatch" style="background:#8a8578"></span>Mountain — impassable (knights may jump over, never land)</li>
-      <li><span class="swatch" style="background:#6fa8d8"></span>River / <span class="swatch" style="background:#2f6fa8"></span>Lake — wade one square per turn, can't attack while mid-crossing</li>
-      <li><span class="swatch" style="background:#a9d8e8"></span>Bridge — crosses freely, no restriction</li>
+      <li><span class="swatch" style="background:#1a1714; box-shadow: inset 0 0 4px #000;"></span>Mountain — impassable (knights may jump over, never land)</li>
+      <li><span class="swatch" style="background:#2563eb; border: 1px solid #1d4ed8;"></span>River / Lake — wade one square per turn, can't attack while mid-crossing</li>
+      <li><span class="swatch" style="background:#122d19;"></span>Thick Forest — impassable blockades</li>
     </ul>
 
     <div class="history-panel">
