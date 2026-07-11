@@ -550,3 +550,19 @@ body.zen-active .controls-header {
     background-color: #0b0b0b;
     border-color: #151515;
 }
+
+/* Hide UI elements in Zen Mode */
+body.zen-active .controls-header,
+body.zen-active .game-panels,
+body.zen-active .left-control-stack,
+body.zen-active .mini-map,
+body.zen-active .labels {
+    display: none !important;
+}
+
+/* Optional: Make the board take center stage in Zen Mode */
+body.zen-active .board-outer {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
