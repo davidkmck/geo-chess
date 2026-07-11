@@ -1,4 +1,4 @@
-(function () {  // 6:37 2026-07-11
+(function () {  // 6:46, 6:37 2026-07-11
     "use strict";
 
     // ==========================================================================
@@ -80,13 +80,14 @@
 
     function isWater(t) { return t === "river" || t === "lake"; }
     function isForest(t) { return t === "forest"; }
-    function isSlow(t) { return isWater(t) || isForest(t); }
-    function isImpassable(t) { return t === "mountain"; } // Forests are no longer impassable
+    
+    // REFINED: Water is slow, Forest is open territory
+    function isSlow(t) { return isWater(t); } 
+    function isImpassable(t) { return t === "mountain"; } 
 
     function canCapture(tFrom, tTo) {
-        // WATER COMBAT: Dry piece can attack Wet piece. Wet piece cannot attack Dry piece.
         if (isWater(tFrom) && !isWater(tTo)) return false;
-        if (isWater(tFrom) && isWater(tTo)) return false; // Wet cannot attack Wet
+        if (isWater(tFrom) && isWater(tTo)) return false; 
 
         // FOREST COMBAT: Inside can attack Outside. Outside cannot attack Inside.
         if (!isForest(tFrom) && isForest(tTo)) return false;
@@ -155,7 +156,7 @@
                 if (!bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
                     moves.push({ r: nr, f: f });
                     const nnr = r + (2 * dir);
-                    // Prevent double step if starting in slow terrain, or if the intermediate square is slow
+                    // Standard pawn movement remains restricted by "Slow" (Water)
                     if (r === startRank && !isSlow(tFrom) && !isSlow(terrain(nr, f)) && !bMatrix[nnr][f] && !isImpassable(terrain(nnr, f))) {
                         moves.push({ r: nnr, f: f });
                     }
@@ -190,7 +191,8 @@
                     const tgt = bMatrix[curR][curF];
                     if (!tgt) {
                         moves.push({ r: curR, f: curF });
-                        if (isSlow(tTo) && tTo !== "ford") break; // Stop after entering slow terrain
+                        // REFINED: Break only on Water/Lakes, allow free movement in Forest
+                        if (isWater(tTo) && tTo !== "ford") break; 
                     } else {
                         if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
                             moves.push({ r: curR, f: curF });
@@ -198,7 +200,8 @@
                         break;
                     }
 
-                    if (isSlow(tFrom) && tFrom !== "ford") break; // Only allowed 1 step if starting in slow terrain
+                    // REFINED: Only restrict sliding if starting in Water
+                    if (isWater(tFrom) && tFrom !== "ford") break; 
                     
                     curR += dr;
                     curF += df;
