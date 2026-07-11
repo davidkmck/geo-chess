@@ -5,7 +5,6 @@
     // 1. Core Config & Global State Matrix
     // ==========================================================================
     const SIZE = 14;
-    const FILES = "abcdefghijklmn".split("");
 
     let board = [];
     let turn = "w";
@@ -13,30 +12,30 @@
     let legalTargets = []; // [{r, f}]
     let gameOver = false;
 
-    // Camera Navigation States (Driven by Discrete 3-State Zoom Slider)
-    let zoomPreset = 1; // 1 = 14x14 (Full), 2 = 8x8 (Tactical), 3 = 4x4 (Skirmish)
+    // Camera Navigation States
+    let zoomPreset = 1; 
     let panX = 0;
     let panY = 0;
 
     // UI Configuration States
-    let aiEnabled = true;  // DEFAULT: AI Opponent ON
+    let aiEnabled = true;  
+    let hideAllUi = false; // Zen Mode Master Toggle
 
-    // Symmetrical, cleaner terrain map layout configuration
-    // 0: Plain, 1: Mountain, 2: Forest, 3: River, 4: Lake, 5: Ford (Bridge)
-    // Exactly 1 mountain & 1 forest per side. 1 central river with exactly 2 bridges.
+    // Organic Asymmetric Map Layout (0: Plain, 1: Mountain, 2: Forest, 3: River, 4: Lake, 5: Ford)
+    // Safe buffer zones: No blockers on rows 0, 1, 2 or 11, 12, 13 near standard starting squares.
     const TERRAIN_MAP = [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,1,0,0,0,0,0,0,0,0,2,0,0], // Black side: 1 Mountain (col 2), 1 Forest (col 11)
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Safe buffer rank
+        [0,1,1,0,0,0,0,2,2,2,0,0,0,0], // Black Zone: 2x2 Mountain left, 2x3 Forest right
+        [0,1,1,0,0,0,0,2,2,2,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [3,3,3,5,3,3,3,3,3,3,3,5,3,3], // Single River on row 6 with exactly 2 bridges (col 3 and col 11)
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,2,0,0,0,0,0,0,0,0,1,0,0], // White side: 1 Forest (col 2), 1 Mountain (col 11)
+        [3,3,3,5,3,3,3,3,3,3,3,5,3,3], // Center River (row 6) with exactly 2 bridges
+        [0,0,0,0,2,2,0,0,0,4,4,0,0,0], // White Zone: Asymmetric 2x2 Forest center-left, 2x2 Lake right
+        [0,0,0,0,2,2,0,0,0,4,4,0,0,0],
+        [0,0,1,1,0,0,0,0,0,0,0,0,0,0], // Deep White territory: Symmetrical 2x2 Mountain offset
+        [0,0,1,1,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Safe buffer rank
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     ];
@@ -47,8 +46,8 @@
         b: { r: "♜", n: "♞", b: "♝", q: "♛", k: "♚", p: "♟" }
     };
 
-    // Starting Back-Rank Tactical Layout Configurations
-    const BACK_RANK = ["r", "n", "b", "q", "k", "b", "n", "r", "r", "n", "b", "q", "k", "b"];
+    // Standard 8-piece royal back-rank setup array
+    const STANDARD_ROYALS = ["r", "n", "b", "q", "k", "b", "n", "r"];
 
     // ==========================================================================
     // 2. Camera Rendering Matrix Sync
@@ -76,10 +75,15 @@
             let row = [];
             for (let f = 0; f < SIZE; f++) {
                 let piece = null;
-                if (r === 0) piece = { type: BACK_RANK[f], color: "b" };
-                else if (r === 1) piece = { type: "p", color: "b" };
-                else if (r === SIZE - 2) piece = { type: "p", color: "w" };
-                else if (r === SIZE - 1) piece = { type: BACK_RANK[f], color: "w" };
+                
+                // Center the standard 8 pieces between file index 3 and 10
+                if (f >= 3 && f <= 10) {
+                    let standardIdx = f - 3;
+                    if (r === 0) piece = { type: STANDARD_ROYALS[standardIdx], color: "b" };
+                    else if (r === 1) piece = { type: "p", color: "b" };
+                    else if (r === SIZE - 2) piece = { type: "p", color: "w" };
+                    else if (r === SIZE - 1) piece = { type: STANDARD_ROYALS[standardIdx], color: "w" };
+                }
                 
                 row.push({
                     terrain: TERRAIN_MAP[r][f],
@@ -107,15 +111,17 @@
                 let baseColorClass = (r + f) % 2 === 0 ? "light" : "dark";
                 cellEl.classList.add("cell", baseColorClass);
 
-                // Map styling visual overlays
+                // Highlight initial homeland/palace position setup squares (Centered 8x2 areas)
+                if ((f >= 3 && f <= 10) && (r === 0 || r === 1 || r === SIZE - 2 || r === SIZE - 1)) {
+                    cellEl.classList.add("homeland-cell");
+                }
+
+                // Map styling visual environmental layouts
                 if (cellData.terrain === 1) cellEl.classList.add("terrain-mountain");
                 else if (cellData.terrain === 2) cellEl.classList.add("terrain-forest");
                 else if (cellData.terrain === 3) cellEl.classList.add("terrain-river");
+                else if (cellData.terrain === 4) cellEl.classList.add("terrain-lake");
                 else if (cellData.terrain === 5) cellEl.classList.add("terrain-ford");
-
-                if (r <= 1 || r >= SIZE - 2) {
-                    cellEl.classList.add("home-rank");
-                }
 
                 if (selected && selected.r === r && selected.f === f) {
                     cellEl.classList.add("selected");
@@ -130,8 +136,6 @@
                     const pieceEl = document.createElement("span");
                     pieceEl.className = `piece ${cellData.piece.color === "w" ? "white" : "black"}`;
                     pieceEl.textContent = PIECES[cellData.piece.color][cellData.piece.type];
-                    
-                    // BUMPED up to 110% size scale configuration to properly populate cells
                     pieceEl.style.fontSize = "110%"; 
                     cellEl.appendChild(pieceEl);
                 }
@@ -193,44 +197,41 @@
             let dir = p.color === "w" ? -1 : 1;
             let startRow = p.color === "w" ? SIZE - 2 : 1;
             
-            // Single square standard forward step
             let nr = r + dir;
             if (nr >= 0 && nr < SIZE) {
                 let targetCell = board[nr][f];
-                if (!targetCell.piece && targetCell.terrain !== 1 && targetCell.terrain !== 2) {
+                // Blockers include Mountains, Forests, and Lakes
+                if (!targetCell.piece && targetCell.terrain !== 1 && targetCell.terrain !== 2 && targetCell.terrain !== 4) {
                     targets.push({ r: nr, f: f });
                     
-                    // Double square standard opening stride
                     if (r === startRow) {
                         let nnr = r + (dir * 2);
                         let doubleCell = board[nnr][f];
-                        if (!doubleCell.piece && doubleCell.terrain !== 1 && doubleCell.terrain !== 2) {
+                        if (!doubleCell.piece && doubleCell.terrain !== 1 && doubleCell.terrain !== 2 && doubleCell.terrain !== 4) {
                             targets.push({ r: nnr, f: f });
                         }
                     }
                 }
             }
             
-            // Standard Diagonal Captures rules setup
             let captureOffsets = [-1, 1];
             captureOffsets.forEach(fo => {
                 let nf = f + fo;
                 let cr = r + dir;
                 if (cr >= 0 && cr < SIZE && nf >= 0 && nf < SIZE) {
                     let capCell = board[cr][nf];
-                    if (capCell.piece && capCell.piece.color !== p.color && capCell.terrain !== 1 && capCell.terrain !== 2) {
+                    if (capCell.piece && capCell.piece.color !== p.color && capCell.terrain !== 1 && capCell.terrain !== 2 && capCell.terrain !== 4) {
                         targets.push({ r: cr, f: nf });
                     }
                 }
             });
         } else {
-            // General uniform step rules vectors for other pieces
             let directions = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
             directions.forEach(d => {
                 let nr = r + d[0], nf = f + d[1];
                 if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
                     let targetCell = board[nr][nf];
-                    if (targetCell.terrain !== 1 && targetCell.terrain !== 2) {
+                    if (targetCell.terrain !== 1 && targetCell.terrain !== 2 && targetCell.terrain !== 4) {
                         if (!targetCell.piece || targetCell.piece.color !== p.color) {
                             targets.push({ r: nr, f: nf });
                         }
@@ -282,6 +283,16 @@
                 panX = 0;
                 panY = 0;
                 updateCameraMatrix();
+            });
+        }
+
+        // Functional Master Toggle for Zen Mode Switch
+        const zenBtn = document.getElementById("btn-zen");
+        if (zenBtn) {
+            zenBtn.addEventListener("click", () => {
+                hideAllUi = !hideAllUi;
+                document.body.classList.toggle("zen-active", hideAllUi);
+                zenBtn.classList.toggle("active-glow", hideAllUi);
             });
         }
 
