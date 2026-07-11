@@ -24,10 +24,8 @@
     let startPanY = 0;
 
     // UI Component Visibility States
-    let showLegend = true;
-    let showHistory = true;
     let isFlipped = false;
-    let hideAllUi = false; // New state to track master Zen Mode
+    let hideAllUi = false; // Master Zen Mode state
 
     // ---- History (undo/redo + jump-to-any-point) ----
     let history = [];
@@ -221,7 +219,7 @@
     const miniMapEl = document.getElementById("miniMap");
     const miniMapViewportEl = document.getElementById("miniMapViewport");
 
-    // Create UI Control Buttons Context Setup
+    // Dynamic UI Creation Context Setup
     const controlsRow = resetBtn.parentNode;
 
     const flipBtn = document.createElement("button");
@@ -230,21 +228,7 @@
     flipBtn.innerHTML = "🔄 Flip Board";
     controlsRow.appendChild(flipBtn);
 
-    // Show/Hide Legend Button
-    const toggleLegendBtn = document.createElement("button");
-    toggleLegendBtn.className = "btn-ghost";
-    toggleLegendBtn.style.marginLeft = "0.5rem";
-    toggleLegendBtn.innerHTML = "🗺️ Hide Legend";
-    controlsRow.appendChild(toggleLegendBtn);
-
-    // Show/Hide History Button
-    const toggleHistoryBtn = document.createElement("button");
-    toggleHistoryBtn.className = "btn-ghost";
-    toggleHistoryBtn.style.marginLeft = "0.5rem";
-    toggleHistoryBtn.innerHTML = "📜 Hide History";
-    controlsRow.appendChild(toggleHistoryBtn);
-
-    // New Master Zen Mode Toggle Button
+    // Master Zen Mode Toggle Button
     const toggleZenBtn = document.createElement("button");
     toggleZenBtn.className = "btn-ghost";
     toggleZenBtn.style.marginLeft = "0.5rem";
@@ -264,7 +248,7 @@
         ranksEl.innerHTML = "";
         filesEl.innerHTML = "";
         
-        // Hide standard rank/file markers entirely if Preset 1, Preset 2, or Zen Mode is selected
+        // Hide standard rank/file markers entirely if Preset 1, Preset 2, or Zen Mode is active
         if (zoomPreset === 1 || zoomPreset === 2 || hideAllUi) {
             ranksEl.style.display = "none";
             filesEl.style.display = "none";
@@ -355,12 +339,24 @@
         }
         boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
         
-        // Enforce dynamic layout configs via CSS styling states
+        // ---- Zen Mode: Show/Hide All Non-Board Panels & Side Cards ----
         const legendEl = document.querySelector(".legend-card");
-        if (legendEl) legendEl.style.display = (showLegend && !hideAllUi) ? "block" : "none";
+        if (legendEl) legendEl.style.display = hideAllUi ? "none" : "block";
         
         const moveHistoryContainer = moveLogEl.closest(".panel-card");
-        if (moveHistoryContainer) moveHistoryContainer.style.display = (showHistory && !hideAllUi) ? "block" : "none";
+        if (moveHistoryContainer) moveHistoryContainer.style.display = hideAllUi ? "none" : "block";
+
+        const aiConfigPanel = document.querySelector(".ai-config-panel") || aiToggle?.closest(".panel-card");
+        if (aiConfigPanel) aiConfigPanel.style.display = hideAllUi ? "none" : "block";
+        
+        const playerWidgetsRow = document.querySelector(".player-widgets-row") || widgetW?.parentNode;
+        if (playerWidgetsRow) playerWidgetsRow.style.display = hideAllUi ? "none" : "flex";
+
+        // ---- Zen Mode: Filter Active Control Buttons ----
+        resetBtn.style.display = hideAllUi ? "none" : "inline-block";
+        undoBtn.style.display = hideAllUi ? "none" : "inline-block";
+        redoBtn.style.display = hideAllUi ? "none" : "inline-block";
+        flipBtn.style.display = hideAllUi ? "none" : "inline-block";
         
         updateBoardTransform();
         
@@ -805,7 +801,6 @@
         
         board[tr][tf] = moving;
         board[fr][ff] = null;
-        const oldMoved = moving.moved;
         moving.moved = true;
         
         let wasPromotion = false;
@@ -847,18 +842,6 @@
     flipBtn.addEventListener("click", () => {
         isFlipped = !isFlipped;
         buildLabels();
-        render();
-    });
-
-    toggleLegendBtn.addEventListener("click", () => {
-        showLegend = !showLegend;
-        toggleLegendBtn.innerHTML = showLegend ? "🗺️ Hide Legend" : "🗺️ Show Legend";
-        render();
-    });
-
-    toggleHistoryBtn.addEventListener("click", () => {
-        showHistory = !showHistory;
-        toggleHistoryBtn.innerHTML = showHistory ? "📜 Hide History" : "📜 Show History";
         render();
     });
 
