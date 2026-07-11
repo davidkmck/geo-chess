@@ -12,12 +12,16 @@
   let gameOver = false;
   let gameOverText = "";
   
-  // New UI States
+  // UI Layout & Camera States
   let isFlipped = false;
   let zoomScale = 1;
+  let panX = 0;
+  let panY = 0;
+  let isPanning = false;
+  let startPanX = 0;
+  let startPanY = 0;
 
   // ---- History (undo/redo + jump-to-any-point) ----
-  // Included lastMove: { from: {r,f}, to: {r,f} } in snapshots to persistent-track history jumps
   let history = [];
   let moveLog = [];
   let currentIndex = 0;
@@ -27,12 +31,12 @@
   // ---- Terrain ----
   function terrain(r, f) {
     // 1. Mountains (Impassable blockades)
-    if (r >= 3 && r <= 4 && f >= 1 && f <= 2) return "mountain"; // White-side flank
-    if (r >= 9 && r <= 10 && f >= 10 && f <= 12) return "mountain"; // Black-side flank
+    if (r >= 3 && r <= 4 && f >= 1 && f <= 2) return "mountain"; 
+    if (r >= 9 && r <= 10 && f >= 10 && f <= 12) return "mountain"; 
     
     // 2. Thick Forest (Green - behaves like mountain blocks for path lines)
-    if (r >= 3 && r <= 4 && f >= 11 && f <= 12) return "forest"; // White-side right flank forest
-    if (r >= 9 && r <= 10 && f >= 1 && f <= 3) return "forest"; // Black-side left flank forest
+    if (r >= 3 && r <= 4 && f >= 11 && f <= 12) return "forest"; 
+    if (r >= 9 && r <= 10 && f >= 1 && f <= 3) return "forest"; 
 
     // 3. Water Hazards
     if (r === 8 && f >= 6 && f <= 8) return "lake";
@@ -202,7 +206,7 @@
     }
   }
 
-  // ---- Rendering ----
+  // ---- Rendering & Elements UI ----
   const boardEl = document.getElementById("board");
   const ranksEl = document.getElementById("ranks");
   const filesEl = document.getElementById("files");
@@ -218,7 +222,10 @@
   const aiDifficulty = document.getElementById("aiDifficulty");
   const aiThinkingEl = document.getElementById("aiThinking");
 
-  // Create Flip Button element and drop it dynamically next to Reset
+  const boardOuterEl = document.querySelector(".board-outer");
+  const miniMapEl = document.getElementById("miniMap");
+  const miniMapViewportEl = document.getElementById("miniMapViewport");
+
   const flipBtn = document.createElement("button");
   flipBtn.className = "btn-ghost";
   flipBtn.style.marginLeft = "0.5rem";
@@ -231,7 +238,6 @@
     ranksEl.innerHTML = "";
     filesEl.innerHTML = "";
     
-    // Order dynamically handles flipping coordinates labels
     const range = Array.from({length: SIZE}, (_, i) => i);
     const rankOrder = isFlipped ? range : [...range].reverse();
     const fileOrder = isFlipped ? [...range].reverse() : range;
@@ -252,12 +258,12 @@
   function isLegalTarget(r, f) {
     return legalTargets.some((m) => m.r === r && m.f === f);
   }
-function render() {
+
+  function render() {
     boardEl.innerHTML = "";
     const activeSnapshot = history[currentIndex];
     const lm = activeSnapshot ? activeSnapshot.lastMove : null;
 
-    // Build the grid indices dynamically depending on flip state
     for (let i = 0; i < SIZE; i++) {
       const r = isFlipped ? i : (SIZE - 1 - i);
       for (let j = 0; j < SIZE; j++) {
@@ -269,7 +275,6 @@ function render() {
         if (t !== "plain") cls += " terrain-" + t;
         if (isHomeRank(r)) cls += " home-rank";
         
-        // Dynamic last-move structural highlight checks
         if (lm) {
           if (lm.from.r === r && lm.from.f === f) cls += " last-move-source";
           if (lm.to.r === r && lm.to.f === f) cls += " last-move-target";
@@ -306,70 +311,7 @@ function render() {
     turnIndicator.className = "turn-pill " + (turn === "w" ? "turn-w" : "turn-b");
     boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
 
-    // Apply the active layout scale transform
-    boardEl.style.transform = `scale(${zoomScale})`;
-
-    if (gameOver) {
-      winMessage.textContent = gameOverText;
-      winOverlay.classList.remove("hidden");
-    } else {
-      winOverlay.classList.add("hidden");
-    }
-
-    undoBtn.disabled = currentIndex <= 0;
-    redoBtn.disabled = currentIndex >= history.length - 1;
-    renderMoveLog();
-  }
-
-  function makeMove(fr, ff, move) {
-    const tr = move.r, tf = move.f;
-    const moving = board[fr][ff];
-    const movingType = moving.type;
-    const movingColor = moving.color;
-    const captured = board[tr][tf];
-
-    board[tr][tf] = moving;
-    board[fr][ff] = null;
-    moving.moved = true;
-
-    if (move.castle) {
-      const rook = board[move.rookFrom.r][move.rookFrom.f];
-      board[move.rookTo.r][move.rookTo.f] = rook;
-      board[move.rookFrom.r][move.rookFrom.f] = null;
-      rook.moved = true;
-    }
-
-    let wasPromotion = false;
-    if (moving.type === "P") {
-      const lastRank = moving.color === "w" ? SIZE - 1 : 0;
-      if (tr === lastRank) {
-        moving.type = "Q";
-        wasPromotion = true;
-      }
-    }
-
-    const desc = describeMove(fr, ff, move, movingType, movingColor, captured, wasPromotion);
-
-    if (captured && captured.type === "K") {
-      gameOver = true;
-      gameOverText = (movingColor === "w" ? "White" : "Black") + " wins";
-    } else {
-      turn = turn === "w" ? "b" : "w";
-    }
-
-    // Smoothly zoom out to standard scale view
-    zoomScale = 1;
-
-    // Capture explicit locations inside move payload for tracking highlights
-    commitHistory(desc, { from: { r: fr, f: ff }, to: { r: tr, f: tf } });
-  }
-  
-    turnIndicator.innerHTML = `<span class="turn-dot"></span>${turn === "w" ? "White" : "Black"} to move`;
-    turnIndicator.className = "turn-pill " + (turn === "w" ? "turn-w" : "turn-b");
-    boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
-
-    // Apply the active layout scale transform
-    boardEl.style.transform = `scale(${zoomScale})`;
+    updateBoardTransform();
 
     if (gameOver) {
       winMessage.textContent = gameOverText;
@@ -407,7 +349,49 @@ function render() {
     }
   }
 
-  // ---- Interaction Engine ----
+  // ---- Dynamic Viewport Matrix Transforms & Mini-Map Sync ----
+  function updateBoardTransform() {
+    const outerRect = boardOuterEl.getBoundingClientRect();
+    const minX = outerRect.width - (outerRect.width * zoomScale);
+    const minY = outerRect.height - (outerRect.height * zoomScale);
+
+    if (zoomScale > 1) {
+      panX = Math.min(0, Math.max(panX, minX));
+      panY = Math.min(0, Math.max(panY, minY));
+    } else {
+      panX = 0;
+      panY = 0;
+    }
+
+    boardEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
+    updateMiniMap();
+  }
+
+  function updateMiniMap() {
+    if (!miniMapEl || !miniMapViewportEl) return;
+    if (zoomScale <= 1) {
+      miniMapEl.classList.add("hidden");
+      return;
+    }
+    miniMapEl.classList.remove("hidden");
+
+    const widthPct = 100 / zoomScale;
+    const heightPct = 100 / zoomScale;
+
+    const outerRect = boardOuterEl.getBoundingClientRect();
+    const maxPanX = (outerRect.width * zoomScale) - outerRect.width;
+    const maxPanY = (outerRect.height * zoomScale) - outerRect.height;
+
+    const leftPct = maxPanX > 0 ? (Math.abs(panX) / maxPanX) * (100 - widthPct) : 0;
+    const topPct = maxPanY > 0 ? (Math.abs(panY) / maxPanY) * (100 - heightPct) : 0;
+
+    miniMapViewportEl.style.width = `${widthPct}%`;
+    miniMapViewportEl.style.height = `${heightPct}%`;
+    miniMapViewportEl.style.left = `${leftPct}%`;
+    miniMapViewportEl.style.top = `${topPct}%`;
+  }
+
+  // ---- Interaction & Dragging Engine ----
   const DRAG_THRESHOLD = 6; 
   let dragCandidate = null; 
 
@@ -433,7 +417,7 @@ function render() {
   }
 
   function onPointerDown(e) {
-    if (gameOver || dragCandidate || e.pointerType === "touch" && touchState.pinching) return;
+    if (gameOver || dragCandidate || (e.pointerType === "touch" && touchState.pinching)) return;
     const r = Number(e.currentTarget.dataset.r);
     const f = Number(e.currentTarget.dataset.f);
 
@@ -540,8 +524,7 @@ function render() {
     render();
   }
 
-  // ---- Pinch-To-Zoom Gesture Event Handling ----
-  const boardOuterEl = document.querySelector(".board-outer");
+  // ---- Multi-Touch (Pinch-To-Zoom + Spatial View Panning) ----
   let touchState = { pinching: false, startDist: 0, startScale: 1 };
 
   boardOuterEl.addEventListener("touchstart", (e) => {
@@ -553,6 +536,15 @@ function render() {
         e.touches[0].clientY - e.touches[1].clientY
       );
       if (dragCandidate) { clearDragVisuals(); dragCandidate = null; }
+    } else if (e.touches.length === 1 && zoomScale > 1) {
+      const targetCell = e.touches[0].target.closest(".cell");
+      const hasFriendlyPiece = targetCell && pieceAt(board, Number(targetCell.dataset.r), Number(targetCell.dataset.f))?.color === turn;
+      
+      if (!hasFriendlyPiece) {
+        isPanning = true;
+        startPanX = e.touches[0].clientX - panX;
+        startPanY = e.touches[0].clientY - panY;
+      }
     }
   }, { passive: true });
 
@@ -562,20 +554,51 @@ function render() {
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      const factor = currentDist / touchState.startDist;
-      // Limits scaling zoom safely bounds between 1x and 2.5x standard width profile
-      zoomScale = Math.min(Math.max(touchState.startScale * factor, 1), 2.5);
-      boardEl.style.transform = `scale(${zoomScale})`;
+      if (touchState.startDist > 0) {
+        const factor = currentDist / touchState.startDist;
+        zoomScale = Math.min(Math.max(touchState.startScale * factor, 0.5), 2.5);
+        updateBoardTransform();
+      }
+    } else if (isPanning && e.touches.length === 1) {
+      panX = e.touches[0].clientX - startPanX;
+      panY = e.touches[0].clientY - startPanY;
+      updateBoardTransform();
     }
   }, { passive: true });
 
   boardOuterEl.addEventListener("touchend", (e) => {
-    if (e.touches.length < 2) {
-      touchState.pinching = false;
-    }
+    if (e.touches.length < 2) touchState.pinching = false;
+    isPanning = false;
   }, { passive: true });
 
-  // ---- AI opponent ----
+  // ---- Mouse Event Nav Fallbacks (Right Click / Background Drag Panning) ----
+  boardOuterEl.addEventListener("mousedown", (e) => {
+    if (zoomScale > 1) {
+      const targetCell = e.target.closest(".cell");
+      const hasFriendlyPiece = targetCell && pieceAt(board, Number(targetCell.dataset.r), Number(targetCell.dataset.f))?.color === turn;
+      
+      if (!hasFriendlyPiece || e.button === 2) { 
+        isPanning = true;
+        startPanX = e.clientX - panX;
+        startPanY = e.clientY - panY;
+      }
+    }
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isPanning) return;
+    panX = e.clientX - startPanX;
+    panY = e.clientY - startPanY;
+    updateBoardTransform();
+  });
+
+  window.addEventListener("mouseup", () => {
+    isPanning = false;
+  });
+
+  boardOuterEl.addEventListener("contextmenu", e => { if(zoomScale > 1) e.preventDefault(); });
+
+  // ---- AI Opponent Engine ----
   const PIECE_VALUE = { P: 100, N: 300, B: 300, R: 500, Q: 900, K: 100000 };
 
   function evaluate(b) {
@@ -751,13 +774,15 @@ function render() {
       turn = turn === "w" ? "b" : "w";
     }
 
-    // 1. Reset the global zoom tracking variable back to standard scale
+    // Smoothly transition view back to normal aspect frame ratio
     zoomScale = 1;
-    
-    // Capture explicit locations inside move payload for tracking highlights
+    panX = 0;
+    panY = 0;
+
     commitHistory(desc, { from: { r: fr, f: ff }, to: { r: tr, f: tf } });
   }
 
+  // ---- State Synchronization Matrix ----
   function snapshot(lastMoveObj = null) {
     return {
       board: JSON.parse(JSON.stringify(board)),
@@ -803,14 +828,16 @@ function render() {
     legalTargets = [];
     gameOver = false;
     gameOverText = "";
-    zoomScale = 1; // Reset scale window view
+    zoomScale = 1; 
+    panX = 0;
+    panY = 0;
     history = [snapshot(null)];
     moveLog = [];
     currentIndex = 0;
     render();
   }
 
-  // Bind new board inverter button action
+  // ---- DOM Action Listeners ----
   flipBtn.addEventListener("click", () => {
     isFlipped = !isFlipped;
     buildLabels();
