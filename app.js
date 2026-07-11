@@ -12,14 +12,22 @@
   let gameOver = false;
   let gameOverText = "";
   
-  // UI Layout & Camera States
-  let isFlipped = false;
-  let zoomScale = 1;
+  // New Preset Layout & Camera States
+  // 0 = Full board with controls and labels
+  // 1 = Full board only (labels hidden)
+  // 2 = Zoomed in 8x8 viewport window
+  let zoomPreset = 0; 
   let panX = 0;
   let panY = 0;
   let isPanning = false;
   let startPanX = 0;
   let startPanY = 0;
+
+  // UI Component Visibility States
+  let showLegend = true;
+  let showHistory = true;
+
+  let isFlipped = false;
 
   // ---- History (undo/redo + jump-to-any-point) ----
   let history = [];
@@ -225,11 +233,35 @@
   const miniMapEl = document.getElementById("miniMap");
   const miniMapViewportEl = document.getElementById("miniMapViewport");
 
+  // Create UI Control Buttons Context Setup
+  const controlsRow = resetBtn.parentNode;
+
   const flipBtn = document.createElement("button");
   flipBtn.className = "btn-ghost";
   flipBtn.style.marginLeft = "0.5rem";
   flipBtn.innerHTML = "🔄 Flip Board";
-  resetBtn.parentNode.appendChild(flipBtn);
+  controlsRow.appendChild(flipBtn);
+
+  // Show/Hide Legend Button
+  const toggleLegendBtn = document.createElement("button");
+  toggleLegendBtn.className = "btn-ghost";
+  toggleLegendBtn.style.marginLeft = "0.5rem";
+  toggleLegendBtn.innerHTML = "🗺️ Hide Legend";
+  controlsRow.appendChild(toggleLegendBtn);
+
+  // Show/Hide History Button
+  const toggleHistoryBtn = document.createElement("button");
+  toggleHistoryBtn.className = "btn-ghost";
+  toggleHistoryBtn.style.marginLeft = "0.5rem";
+  toggleHistoryBtn.innerHTML = "📜 Hide History";
+  controlsRow.appendChild(toggleHistoryBtn);
+
+  // Zoom Level Preset Selector Cycle Button
+  const zoomPresetBtn = document.createElement("button");
+  zoomPresetBtn.className = "btn-primary";
+  zoomPresetBtn.style.marginLeft = "0.5rem";
+  zoomPresetBtn.innerHTML = "🔍 Zoom: Standard (1)";
+  controlsRow.appendChild(zoomPresetBtn);
 
   const GLYPHS = { R: "\u265C", N: "\u265E", B: "\u265D", Q: "\u265B", K: "\u265A", P: "\u265F" };
 
@@ -237,6 +269,16 @@
     ranksEl.innerHTML = "";
     filesEl.innerHTML = "";
     
+    // Hide standard rank/file markers entirely if Preset 1 or Preset 2 is selected
+    if (zoomPreset === 1 || zoomPreset === 2) {
+      ranksEl.style.display = "none";
+      filesEl.style.display = "none";
+      return;
+    }
+
+    ranksEl.style.display = "flex";
+    filesEl.style.display = "flex";
+
     const range = Array.from({length: SIZE}, (_, i) => i);
     const rankOrder = isFlipped ? range : [...range].reverse();
     const fileOrder = isFlipped ? [...range].reverse() : range;
@@ -325,6 +367,13 @@
 
     boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
 
+    // Enforce dynamic layout configs via CSS styling states
+    const legendEl = document.querySelector(".legend-card");
+    if (legendEl) legendEl.style.display = showLegend ? "block" : "none";
+    
+    const moveHistoryContainer = moveLogEl.closest(".panel-card");
+    if (moveHistoryContainer) moveHistoryContainer.style.display = showHistory ? "block" : "none";
+
     updateBoardTransform();
 
     if (gameOver) {
@@ -365,36 +414,42 @@
 
   // ---- Dynamic Viewport Matrix Transforms & Mini-Map Sync ----
   function updateBoardTransform() {
-    const outerRect = boardOuterEl.getBoundingClientRect();
-    const minX = outerRect.width - (outerRect.width * zoomScale);
-    const minY = outerRect.height - (outerRect.height * zoomScale);
+    // Determine target scale factoring active preset configuration boundaries
+    // Preset 0 & 1 scale = 1.0 (Full 14x14 grid fits viewport perfectly)
+    // Preset 2 scale = 14 / 8 = 1.75 (Creates a crisp 8x8 visible view window block)
+    const activeScale = zoomPreset === 2 ? 1.75 : 1;
 
-    if (zoomScale > 1) {
+    const outerRect = boardOuterEl.getBoundingClientRect();
+    const minX = outerRect.width - (outerRect.width * activeScale);
+    const minY = outerRect.height - (outerRect.height * activeScale);
+
+    if (zoomPreset === 2) {
       panX = Math.min(0, Math.max(panX, minX));
       panY = Math.min(0, Math.max(panY, minY));
     } else {
+      // Anchors coordinates firmly at 0 to completely prevent the board moving up/displacing
       panX = 0;
       panY = 0;
     }
 
-    boardEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
-    updateMiniMap();
+    boardEl.style.transform = `translate(${panX}px, ${panY}px) scale(${activeScale})`;
+    updateMiniMap(activeScale);
   }
 
-  function updateMiniMap() {
+  function updateMiniMap(activeScale) {
     if (!miniMapEl || !miniMapViewportEl) return;
-    if (zoomScale <= 1) {
+    if (zoomPreset !== 2) {
       miniMapEl.classList.add("hidden");
       return;
     }
     miniMapEl.classList.remove("hidden");
 
-    const widthPct = 100 / zoomScale;
-    const heightPct = 100 / zoomScale;
+    const widthPct = 100 / activeScale;
+    const heightPct = 100 / activeScale;
 
     const outerRect = boardOuterEl.getBoundingClientRect();
-    const maxPanX = (outerRect.width * zoomScale) - outerRect.width;
-    const maxPanY = (outerRect.height * zoomScale) - outerRect.height;
+    const maxPanX = (outerRect.width * activeScale) - outerRect.width;
+    const maxPanY = (outerRect.height * activeScale) - outerRect.height;
 
     const leftPct = maxPanX > 0 ? (Math.abs(panX) / maxPanX) * (100 - widthPct) : 0;
     const topPct = maxPanY > 0 ? (Math.abs(panY) / maxPanY) * (100 - heightPct) : 0;
@@ -431,7 +486,7 @@
   }
 
   function onPointerDown(e) {
-    if (gameOver || dragCandidate || (e.pointerType === "touch" && touchState.pinching)) return;
+    if (gameOver || dragCandidate) return;
     const r = Number(e.currentTarget.dataset.r);
     const f = Number(e.currentTarget.dataset.f);
 
@@ -490,7 +545,7 @@
       }
     }
     if (dragCandidate.moved && dragCandidate.ghost) {
-      positionGhost(dragCandidate.ghost, dragCandidate.cellRect, e.clientX, e.clientY);
+      positionGhost(ghost, dragCandidate.cellRect, e.clientX, e.clientY);
     }
   }
 
@@ -538,19 +593,9 @@
     render();
   }
 
-  // ---- Multi-Touch (Pinch-To-Zoom + Spatial View Panning) ----
-  let touchState = { pinching: false, startDist: 0, startScale: 1 };
-
+  // ---- Precise Linear Viewport Panning Touch Gestures (Replaces Unstable Pinch Loop) ----
   boardOuterEl.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 2) {
-      touchState.pinching = true;
-      touchState.startScale = zoomScale;
-      touchState.startDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      if (dragCandidate) { clearDragVisuals(); dragCandidate = null; }
-    } else if (e.touches.length === 1 && zoomScale > 1) {
+    if (zoomPreset === 2 && e.touches.length === 1) {
       const targetCell = e.touches[0].target.closest(".cell");
       const hasFriendlyPiece = targetCell && pieceAt(board, Number(targetCell.dataset.r), Number(targetCell.dataset.f))?.color === turn;
       
@@ -563,31 +608,20 @@
   }, { passive: true });
 
   boardOuterEl.addEventListener("touchmove", (e) => {
-    if (touchState.pinching && e.touches.length === 2) {
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      if (touchState.startDist > 0) {
-        const factor = currentDist / touchState.startDist;
-        zoomScale = Math.min(Math.max(touchState.startScale * factor, 0.5), 2.5);
-        updateBoardTransform();
-      }
-    } else if (isPanning && e.touches.length === 1) {
+    if (isPanning && zoomPreset === 2 && e.touches.length === 1) {
       panX = e.touches[0].clientX - startPanX;
       panY = e.touches[0].clientY - startPanY;
       updateBoardTransform();
     }
   }, { passive: true });
 
-  boardOuterEl.addEventListener("touchend", (e) => {
-    if (e.touches.length < 2) touchState.pinching = false;
+  boardOuterEl.addEventListener("touchend", () => {
     isPanning = false;
   }, { passive: true });
 
-  // ---- Mouse Event Nav Fallbacks (Right Click / Background Drag Panning) ----
+  // ---- Mouse Event Nav Fallbacks (Right Click / Drag Panning) ----
   boardOuterEl.addEventListener("mousedown", (e) => {
-    if (zoomScale > 1) {
+    if (zoomPreset === 2) {
       const targetCell = e.target.closest(".cell");
       const hasFriendlyPiece = targetCell && pieceAt(board, Number(targetCell.dataset.r), Number(targetCell.dataset.f))?.color === turn;
       
@@ -600,7 +634,7 @@
   });
 
   window.addEventListener("mousemove", (e) => {
-    if (!isPanning) return;
+    if (!isPanning || zoomPreset !== 2) return;
     panX = e.clientX - startPanX;
     panY = e.clientY - startPanY;
     updateBoardTransform();
@@ -610,7 +644,7 @@
     isPanning = false;
   });
 
-  boardOuterEl.addEventListener("contextmenu", e => { if(zoomScale > 1) e.preventDefault(); });
+  boardOuterEl.addEventListener("contextmenu", e => { if(zoomPreset === 2) e.preventDefault(); });
 
   // ---- AI Opponent Engine ----
   const PIECE_VALUE = { P: 100, N: 300, B: 300, R: 500, Q: 900, K: 100000 };
@@ -721,7 +755,6 @@
     updateAIThinkingUI(true);
     const expectedIndex = currentIndex;
 
-    // Use requestAnimationFrame to ensure the UI paints the "Thinking..." status instantly
     requestAnimationFrame(() => {
       setTimeout(() => {
         let result = null;
@@ -731,7 +764,6 @@
           result = null;
         }
         
-        // Immediately drop the thinking state and execute the move as soon as computation finishes
         aiThinking = false;
         updateAIThinkingUI(false);
 
@@ -742,7 +774,6 @@
       }, 50);
     });
   }
-  
 
   function pieceLabel(type) {
     return type === "N" ? "N" : type === "P" ? "" : type;
@@ -780,7 +811,6 @@
     const deltaX = (targetRect.left + targetRect.width / 2) - (sourceRect.left + sourceRect.width / 2);
     const deltaY = (targetRect.top + targetRect.height / 2) - (sourceRect.top + sourceRect.height / 2);
 
-    // Apply hardware-accelerated transitions directly to the existing piece element
     pieceSpan.style.zIndex = "100";
     pieceSpan.style.transition = "transform 400ms cubic-bezier(0.25, 1, 0.5, 1)";
     pieceSpan.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
@@ -828,10 +858,6 @@
     } else {
       turn = turn === "w" ? "b" : "w";
     }
-
-    zoomScale = 1;
-    panX = 0;
-    panY = 0;
 
     commitHistory(desc, { from: { r: fr, f: ff }, to: { r: tr, f: tf } });
   }
@@ -882,7 +908,7 @@
     legalTargets = [];
     gameOver = false;
     gameOverText = "";
-    zoomScale = 1; 
+    // Maintain zoom preset but center positions explicitly
     panX = 0;
     panY = 0;
     history = [snapshot(null)];
@@ -894,6 +920,35 @@
   // ---- DOM Action Listeners ----
   flipBtn.addEventListener("click", () => {
     isFlipped = !isFlipped;
+    buildLabels();
+    render();
+  });
+
+  toggleLegendBtn.addEventListener("click", () => {
+    showLegend = !showLegend;
+    toggleLegendBtn.innerHTML = showLegend ? "🗺️ Hide Legend" : "🗺️ Show Legend";
+    render();
+  });
+
+  toggleHistoryBtn.addEventListener("click", () => {
+    showHistory = !showHistory;
+    toggleHistoryBtn.innerHTML = showHistory ? "📜 Hide History" : "📜 Show History";
+    render();
+  });
+
+  zoomPresetBtn.addEventListener("click", () => {
+    zoomPreset = (zoomPreset + 1) % 3;
+    panX = 0;
+    panY = 0;
+    
+    if (zoomPreset === 0) {
+      zoomPresetBtn.innerHTML = "🔍 Zoom: Standard (1)";
+    } else if (zoomPreset === 1) {
+      zoomPresetBtn.innerHTML = "🔍 Zoom: Board Only (2)";
+    } else if (zoomPreset === 2) {
+      zoomPresetBtn.innerHTML = "🔍 Zoom: Focused 8x8 (3)";
+    }
+    
     buildLabels();
     render();
   });
