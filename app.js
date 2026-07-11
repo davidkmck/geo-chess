@@ -30,15 +30,12 @@
 
   // ---- Terrain ----
   function terrain(r, f) {
-    // 1. Mountains (Impassable blockades)
     if (r >= 3 && r <= 4 && f >= 1 && f <= 2) return "mountain"; 
     if (r >= 9 && r <= 10 && f >= 10 && f <= 12) return "mountain"; 
     
-    // 2. Thick Forest (Green - behaves like mountain blocks for path lines)
     if (r >= 3 && r <= 4 && f >= 11 && f <= 12) return "forest"; 
     if (r >= 9 && r <= 10 && f >= 1 && f <= 3) return "forest"; 
 
-    // 3. Water Hazards
     if (r === 8 && f >= 6 && f <= 8) return "lake";
     if (r === 6) {
       if (f === 3 || f === 9) return "ford";
@@ -210,7 +207,6 @@
   const boardEl = document.getElementById("board");
   const ranksEl = document.getElementById("ranks");
   const filesEl = document.getElementById("files");
-  const turnIndicator = document.getElementById("turnIndicator");
   const resetBtn = document.getElementById("resetBtn");
   const winOverlay = document.getElementById("winOverlay");
   const winMessage = document.getElementById("winMessage");
@@ -221,6 +217,9 @@
   const aiToggle = document.getElementById("aiToggle");
   const aiDifficulty = document.getElementById("aiDifficulty");
   const aiThinkingEl = document.getElementById("aiThinking");
+
+  const widgetW = document.getElementById("widget-w");
+  const widgetB = document.getElementById("widget-b");
 
   const boardOuterEl = document.querySelector(".board-outer");
   const miniMapEl = document.getElementById("miniMap");
@@ -258,7 +257,8 @@
   function isLegalTarget(r, f) {
     return legalTargets.some((m) => m.r === r && m.f === f);
   }
-function render() {
+
+  function render() {
     boardEl.innerHTML = "";
     const activeSnapshot = history[currentIndex];
     const lm = activeSnapshot ? activeSnapshot.lastMove : null;
@@ -299,11 +299,8 @@ function render() {
           const span = document.createElement("span");
           span.className = "piece " + (piece.color === "w" ? "white" : "black");
           
-          // If this piece just moved, give it a distinguished class or direct style outline
           if (isLastMoveTarget) {
             span.classList.add("last-moved-piece");
-            // Optional fallback: inline styling to guarantee visibility without CSS file updates
-            span.style.textShadow = "0 0 8px #ffeb3b, 0 0 12px #ffeb3b";
           }
           
           span.textContent = GLYPHS[piece.type];
@@ -318,8 +315,14 @@ function render() {
       }
     }
 
-    turnIndicator.innerHTML = `<span class="turn-dot"></span>${turn === "w" ? "White" : "Black"} to move`;
-    turnIndicator.className = "turn-pill " + (turn === "w" ? "turn-w" : "turn-b");
+    if (turn === "w") {
+      if (widgetW) widgetW.classList.add("active");
+      if (widgetB) widgetB.classList.remove("active");
+    } else {
+      if (widgetB) widgetB.classList.add("active");
+      if (widgetW) widgetW.classList.remove("active");
+    }
+
     boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
 
     updateBoardTransform();
@@ -335,7 +338,6 @@ function render() {
     redoBtn.disabled = currentIndex >= history.length - 1;
     renderMoveLog();
   }
- 
 
   function renderMoveLog() {
     moveLogEl.innerHTML = "";
@@ -710,7 +712,7 @@ function render() {
   let aiThinking = false;
 
   function updateAIThinkingUI(thinking) {
-    aiThinkingEl.classList.toggle("hidden", !thinking);
+    if (aiThinkingEl) aiThinkingEl.classList.toggle("hidden", !thinking);
   }
 
   function maybeTriggerAI() {
@@ -726,13 +728,17 @@ function render() {
       } catch (err) {
         result = null;
       }
-      aiThinking = false;
-      updateAIThinkingUI(false);
+      
+      // Delay executing the physical board update to allow a more deliberate, humanlike pace
+      setTimeout(() => {
+        aiThinking = false;
+        updateAIThinkingUI(false);
 
-      if (currentIndex !== expectedIndex || gameOver || turn !== aiColor) return;
-      if (!result || !result.move) return;
+        if (currentIndex !== expectedIndex || gameOver || turn !== aiColor) return;
+        if (!result || !result.move) return;
 
-      makeMove(result.move.from.r, result.move.from.f, result.move.move);
+        animateAndMakeMove(result.move.from.r, result.move.from.f, result.move.move);
+      }, 2000); 
     }, 60);
   }
 
@@ -750,9 +756,44 @@ function render() {
     return s;
   }
 
+  // ---- Smooth Sliding Animation Engine ----
+  function animateAndMakeMove(fr, ff, move) {
+    const sourceCell = boardEl.querySelector(`[data-r="${fr}"][data-f="${ff}"]`);
+    const targetCell = boardEl.querySelector(`[data-r="${move.r}"][data-f="${move.f}"]`);
+    
+    if (!sourceCell || !targetCell) {
+      makeMove(fr, ff, move);
+      return;
+    }
+
+    const pieceSpan = sourceCell.querySelector(".piece");
+    if (!pieceSpan) {
+      makeMove(fr, ff, move);
+      return;
+    }
+
+    const sourceRect = sourceCell.getBoundingClientRect();
+    const targetRect = targetCell.getBoundingClientRect();
+
+    const deltaX = (targetRect.left + targetRect.width / 2) - (sourceRect.left + sourceRect.width / 2);
+    const deltaY = (targetRect.top + targetRect.height / 2) - (sourceRect.top + sourceRect.height / 2);
+
+    // Apply hardware-accelerated transitions directly to the existing piece element
+    pieceSpan.style.zIndex = "100";
+    pieceSpan.style.transition = "transform 400ms cubic-bezier(0.25, 1, 0.5, 1)";
+    pieceSpan.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+    pieceSpan.addEventListener("transitionend", function handler() {
+      pieceSpan.removeEventListener("transitionend", handler);
+      makeMove(fr, ff, move);
+    }, { once: true });
+  }
+
   function makeMove(fr, ff, move) {
     const tr = move.r, tf = move.f;
     const moving = board[fr][ff];
+    if (!moving) return;
+    
     const movingType = moving.type;
     const movingColor = moving.color;
     const captured = board[tr][tf];
@@ -786,7 +827,6 @@ function render() {
       turn = turn === "w" ? "b" : "w";
     }
 
-    // Smoothly transition view back to normal aspect frame ratio
     zoomScale = 1;
     panX = 0;
     panY = 0;
