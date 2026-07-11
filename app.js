@@ -36,5 +36,20 @@
         3: "R", 4: "N", 5: "B", 6: "Q", 7: "K", 8: "B", 9: "N", 10: "R"
     };
 
+    // Zen Mode Toggle Handler
+function toggleZenMode() {
+  const body = document.body;
+  const btn = document.getElementById('zenToggleBtn');
+  
+  body.classList.toggle('zen-active');
+  
+  if (body.classList.contains('zen-active')) {
+    btn.innerHTML = '👁️';
+    btn.setAttribute('title', 'Exit Zen Mode');
+  } else {
+    btn.innerHTML = '👁️‍🗨️';
+    btn.setAttribute('title', 'Enter Zen Mode');
+  }
+}
     // ---- Terrain
  
