@@ -13,9 +13,6 @@
     let gameOverText = "";
 
     // Preset Layout & Camera States (Driven by Zoom Slider)
-    // 0 = Full board with controls and labels
-    // 1 = Full board only (labels hidden)
-    // 2 = Zoomed in 8x8 viewport window
     let zoomPreset = 0;
     let panX = 0;
     let panY = 0;
@@ -27,7 +24,7 @@
     let isFlipped = false;
     let hideAllUi = false; // Master Zen Mode state
 
-    // ---- History (undo/redo + jump-to-any-point) ----
+    // ---- History ----
     let history = [];
     let moveLog = [];
     let currentIndex = 0;
@@ -199,7 +196,7 @@
         }
     }
 
-    // ---- Rendering & Elements UI ----
+    // ---- Elements Selection ----
     const boardEl = document.getElementById("board");
     const ranksEl = document.getElementById("ranks");
     const filesEl = document.getElementById("files");
@@ -219,22 +216,125 @@
     const miniMapEl = document.getElementById("miniMap");
     const miniMapViewportEl = document.getElementById("miniMapViewport");
 
-    // Dynamic UI Creation Context Setup
-    const controlsRow = resetBtn.parentNode;
+    // ---- Enforce Compact Layout Engine via CSS overrides ----
+    const stylePatch = document.createElement("style");
+    stylePatch.textContent = `
+        /* Group panel header optimization to save vertical space on mobile */
+        header, .controls-header, .top-control-panel {
+            padding: 4px 8px !important;
+            margin-bottom: 4px !important;
+            gap: 6px !important;
+            min-height: auto !important;
+        }
+        .btn-ghost, #resetBtn, #undoBtn, #redoBtn {
+            padding: 4px 10px !important;
+            font-size: 13px !important;
+        }
+        
+        /* Unified Left-Hand Control Stack Alignment */
+        .board-container-wrapper {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            width: 100%;
+        }
+        
+        .left-control-stack {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            height: 280px !important; /* Locks alignment container height */
+            margin-right: 12px !important;
+            z-index: 10;
+        }
+        
+        /* Render Range Slider Vertically */
+        .vertical-slider {
+            -webkit-appearance: slider-vertical !important;
+            writing-mode: bt-lr !important;
+            width: 24px !important;
+            height: 140px !important;
+            padding: 0 !important;
+            margin: 8px 0 !important;
+        }
+        
+        /* Turn indicator widget styles */
+        .turn-indicator-node {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid #555;
+            transition: all 0.25s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .turn-indicator-node.white-node { background-color: #fff; }
+        .turn-indicator-node.black-node { background-color: #222; border-color: #aaa; }
+        .turn-indicator-node.active-glow {
+            transform: scale(1.15);
+            box-shadow: 0 0 12px #ffc107;
+            border-color: #ffc107 !important;
+        }
+    `;
+    document.head.appendChild(stylePatch);
 
-    const flipBtn = document.createElement("button");
-    flipBtn.className = "btn-ghost";
-    flipBtn.style.marginLeft = "0.5rem";
-    flipBtn.innerHTML = "🔄 Flip Board";
-    controlsRow.appendChild(flipBtn);
+    // Build/Restructure Left Control Stack dynamically right next to board
+    let leftStack = document.querySelector(".left-control-stack");
+    if (!leftStack) {
+        leftStack = document.createElement("div");
+        leftStack.className = "left-control-stack";
+        if (boardOuterEl && boardOuterEl.parentNode) {
+            boardOuterEl.parentNode.insertBefore(leftStack, boardOuterEl);
+        }
+    }
+
+    // Clear legacy elements from document structure if found elsewhere
+    if (widgetW) widgetW.remove();
+    if (widgetB) widgetB.remove();
+
+    const blackNode = document.createElement("div");
+    blackNode.className = "turn-indicator-node black-node";
+    blackNode.setAttribute("title", "Black Turn Indicator");
+
+    const whiteNode = document.createElement("div");
+    whiteNode.className = "turn-indicator-node white-node";
+    whiteNode.setAttribute("title", "White Turn Indicator");
+
+    const zoomSlider = document.getElementById("zoomSlider") || document.createElement("input");
+    zoomSlider.id = "zoomSlider";
+    zoomSlider.type = "range";
+    zoomSlider.min = "0";
+    zoomSlider.max = "2";
+    zoomSlider.value = String(zoomPreset);
+    zoomSlider.className = "vertical-slider";
+
+    // Populate Left UI Grid Stack
+    leftStack.innerHTML = "";
+    leftStack.appendChild(blackNode);
+    leftStack.appendChild(zoomSlider);
+    leftStack.appendChild(whiteNode);
+
+    // Append dynamic flip layout button directly to header control group row
+    const controlsRow = resetBtn ? resetBtn.parentNode : document.body;
+    let flipBtn = document.getElementById("flipBtn");
+    if (!flipBtn) {
+        flipBtn = document.createElement("button");
+        flipBtn.id = "flipBtn";
+        flipBtn.className = "btn-ghost";
+        flipBtn.style.marginLeft = "0.5rem";
+        flipBtn.innerHTML = "🔄 Flip";
+        if (controlsRow) controlsRow.appendChild(flipBtn);
+    }
 
     const GLYPHS = { R: "\u265C", N: "\u265E", B: "\u265D", Q: "\u265B", K: "\u265A", P: "\u265F" };
 
     function buildLabels() {
+        if (!ranksEl || !filesEl) return;
         ranksEl.innerHTML = "";
         filesEl.innerHTML = "";
         
-        // Hide standard rank/file markers entirely if Preset 1, Preset 2, or Zen Mode is active
         if (zoomPreset === 1 || zoomPreset === 2 || hideAllUi) {
             ranksEl.style.display = "none";
             filesEl.style.display = "none";
@@ -264,10 +364,16 @@
     }
 
     function render() {
+        if (!boardEl) return;
         boardEl.innerHTML = "";
         const activeSnapshot = history[currentIndex];
         const lm = activeSnapshot ? activeSnapshot.lastMove : null;
         
+        // Ensure board canvas space computes standard proportional height dimensions
+        if (boardOuterEl) {
+            boardOuterEl.style.height = `${boardOuterEl.clientWidth || 400}px`;
+        }
+
         for (let i = 0; i < SIZE; i++) {
             const r = isFlipped ? i : (SIZE - 1 - i);
             for (let j = 0; j < SIZE; j++) {
@@ -301,9 +407,7 @@
                 if (piece) {
                     const span = document.createElement("span");
                     span.className = "piece " + (piece.color === "w" ? "white" : "black");
-                    if (isLastMoveTarget) {
-                        span.classList.add("last-moved-piece");
-                    }
+                    if (isLastMoveTarget) span.classList.add("last-moved-piece");
                     span.textContent = GLYPHS[piece.type];
                     cell.appendChild(span);
                 }
@@ -316,33 +420,33 @@
             }
         }
         
+        // Sync active state indicators on left widgets
         if (turn === "w") {
-            if (widgetW) widgetW.classList.add("active");
-            if (widgetB) widgetB.classList.remove("active");
+            whiteNode.classList.add("active-glow");
+            blackNode.classList.remove("active-glow");
         } else {
-            if (widgetB) widgetB.classList.add("active");
-            if (widgetW) widgetW.classList.remove("active");
+            blackNode.classList.add("active-glow");
+            whiteNode.classList.remove("active-glow");
         }
         boardEl.className = "board " + (turn === "w" ? "turn-w" : "turn-b");
         
-        // ---- Zen Mode: Show/Hide All Non-Board Panels & Side Cards ----
+        // ---- Zen Mode Panel Filters ----
         const legendEl = document.querySelector(".legend-card");
         if (legendEl) legendEl.style.display = hideAllUi ? "none" : "block";
         
-        const moveHistoryContainer = moveLogEl.closest(".panel-card");
+        const moveHistoryContainer = moveLogEl ? moveLogEl.closest(".panel-card") : null;
         if (moveHistoryContainer) moveHistoryContainer.style.display = hideAllUi ? "none" : "block";
 
         const aiConfigPanel = document.querySelector(".ai-config-panel") || aiToggle?.closest(".panel-card");
         if (aiConfigPanel) aiConfigPanel.style.display = hideAllUi ? "none" : "block";
         
-        const playerWidgetsRow = document.querySelector(".player-widgets-row") || widgetW?.parentNode;
-        if (playerWidgetsRow) playerWidgetsRow.style.display = hideAllUi ? "none" : "flex";
+        // Retain leftStack visualization during Zen mode completely!
+        leftStack.style.display = "flex";
 
-        // ---- Zen Mode: Filter Active Control Buttons ----
-        resetBtn.style.display = hideAllUi ? "none" : "inline-block";
-        undoBtn.style.display = hideAllUi ? "none" : "inline-block";
-        redoBtn.style.display = hideAllUi ? "none" : "inline-block";
-        flipBtn.style.display = hideAllUi ? "none" : "inline-block";
+        if (resetBtn) resetBtn.style.display = hideAllUi ? "none" : "inline-block";
+        if (undoBtn) undoBtn.style.display = hideAllUi ? "none" : "inline-block";
+        if (redoBtn) redoBtn.style.display = hideAllUi ? "none" : "inline-block";
+        if (flipBtn) flipBtn.style.display = hideAllUi ? "none" : "inline-block";
         
         updateBoardTransform();
         
@@ -353,12 +457,13 @@
             winOverlay.classList.add("hidden");
         }
         
-        undoBtn.disabled = currentIndex <= 0;
-        redoBtn.disabled = currentIndex >= history.length - 1;
+        if (undoBtn) undoBtn.disabled = currentIndex <= 0;
+        if (redoBtn) redoBtn.disabled = currentIndex >= history.length - 1;
         renderMoveLog();
     }
 
     function renderMoveLog() {
+        if (!moveLogEl) return;
         moveLogEl.innerHTML = "";
         const startItem = document.createElement("li");
         startItem.textContent = "Start";
@@ -378,13 +483,10 @@
         
         const active = moveLogEl.querySelector(".active");
         if (active && active.scrollIntoView) {
-            try {
-                active.scrollIntoView({ block: "nearest", inline: "nearest" });
-            } catch (err) {}
+            try { active.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (err) {}
         }
     }
 
-    // ---- Dynamic Viewport Matrix Transforms & Mini-Map Sync ----
     function updateBoardTransform() {
         const activeScale = zoomPreset === 2 ? 1.75 : 1;
         const outerRect = boardOuterEl.getBoundingClientRect();
@@ -423,14 +525,12 @@
         miniMapViewportEl.style.top = `${topPct}%`;
     }
 
-    // ---- Interaction & Dragging Engine ----
+    // ---- Interaction Logic ----
     const DRAG_THRESHOLD = 6;
     let dragCandidate = null;
 
     function clearDragVisuals() {
-        if (dragCandidate && dragCandidate.ghost) {
-            dragCandidate.ghost.remove();
-        }
+        if (dragCandidate && dragCandidate.ghost) dragCandidate.ghost.remove();
         boardEl.querySelectorAll(".dragging-source").forEach((el) => el.classList.remove("dragging-source"));
     }
 
@@ -546,7 +646,7 @@
         render();
     }
 
-    // ---- Precise Linear Viewport Panning Touch Gestures ----
+    // ---- Panning Engine Hooks ----
     boardOuterEl.addEventListener("touchstart", (e) => {
         if (zoomPreset === 2 && e.touches.length === 1) {
             const targetCell = e.touches[0].target.closest(".cell");
@@ -567,11 +667,8 @@
         }
     }, { passive: true });
 
-    boardOuterEl.addEventListener("touchend", () => {
-        isPanning = false;
-    }, { passive: true });
+    boardOuterEl.addEventListener("touchend", () => { isPanning = false; }, { passive: true });
 
-    // ---- Mouse Event Nav Fallbacks (Right Click / Drag Panning) ----
     boardOuterEl.addEventListener("mousedown", (e) => {
         if (zoomPreset === 2) {
             const targetCell = e.target.closest(".cell");
@@ -591,15 +688,10 @@
         updateBoardTransform();
     });
 
-    window.addEventListener("mouseup", () => {
-        isPanning = false;
-    });
+    window.addEventListener("mouseup", () => { isPanning = false; });
+    boardOuterEl.addEventListener("contextmenu", e => { if(zoomPreset === 2) e.preventDefault(); });
 
-    boardOuterEl.addEventListener("contextmenu", e => {
-        if(zoomPreset === 2) e.preventDefault();
-    });
-
-    // ---- AI Opponent Engine ----
+    // ---- AI Engine ----
     const PIECE_VALUE = { P: 100, N: 300, B: 300, R: 500, Q: 900, K: 100000 };
 
     function evaluate(b) {
@@ -681,16 +773,10 @@
                 score = minimax(child, depth - 1, alpha, beta, colorToMove === "w" ? "b" : "w").score;
             }
             if (colorToMove === "w") {
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMove = mv;
-                }
+                if (score > bestScore) { bestScore = score; bestMove = mv; }
                 alpha = Math.max(alpha, score);
             } else {
-                if (score < bestScore) {
-                    bestScore = score;
-                    bestMove = mv;
-                }
+                if (score < bestScore) { bestScore = score; bestMove = mv; }
                 beta = Math.min(beta, score);
             }
             if (beta <= alpha) break;
@@ -729,14 +815,10 @@
         });
     }
 
-    function pieceLabel(type) {
-        return type === "N" ? "N" : type === "P" ? "" : type;
-    }
+    function pieceLabel(type) { return type === "N" ? "N" : type === "P" ? "" : type; }
 
     function describeMove(fr, ff, move, movingType, movingColor, captured, wasPromotion) {
-        if (move.castle) {
-            return move.f > ff ? "O-O" : "O-O-O";
-        }
+        if (move.castle) return move.f > ff ? "O-O" : "O-O-O";
         const from = FILES[ff] + (fr + 1);
         const to = FILES[move.f] + (move.r + 1);
         const sep = captured ? "x" : "-";
@@ -745,19 +827,12 @@
         return s;
     }
 
-    // ---- Smooth Sliding Animation Engine ----
     function animateAndMakeMove(fr, ff, move) {
         const sourceCell = boardEl.querySelector(`[data-r="${fr}"][data-f="${ff}"]`);
         const targetCell = boardEl.querySelector(`[data-r="${move.r}"][data-f="${move.f}"]`);
-        if (!sourceCell || !targetCell) {
-            makeMove(fr, ff, move);
-            return;
-        }
+        if (!sourceCell || !targetCell) { makeMove(fr, ff, move); return; }
         const pieceSpan = sourceCell.querySelector(".piece");
-        if (!pieceSpan) {
-            makeMove(fr, ff, move);
-            return;
-        }
+        if (!pieceSpan) { makeMove(fr, ff, move); return; }
         const sourceRect = sourceCell.getBoundingClientRect();
         const targetRect = targetCell.getBoundingClientRect();
         const deltaX = (targetRect.left + targetRect.width / 2) - (sourceRect.left + sourceRect.width / 2);
@@ -824,14 +899,13 @@
         render();
     }
 
-    // ---- Event Listeners Setup ----
+    // ---- Listeners Binding ----
     flipBtn.addEventListener("click", () => {
         isFlipped = !isFlipped;
         buildLabels();
         render();
     });
 
-    // Hook up the HTML Zen Mode Toggle Button directly
     const htmlZenBtn = document.getElementById("zenToggleBtn");
     if (htmlZenBtn) {
         htmlZenBtn.addEventListener("click", () => {
@@ -850,78 +924,84 @@
         });
     }
 
-    // Hook up the range slider to drive camera presets (0, 1, 2)
-    const zoomSlider = document.getElementById("zoomSlider");
-    if (zoomSlider) {
-        zoomSlider.addEventListener("input", (e) => {
-            zoomPreset = Number(e.target.value);
+    zoomSlider.addEventListener("input", (e) => {
+        zoomPreset = Number(e.target.value);
+        buildLabels();
+        render();
+    });
+
+    if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+            board = freshBoard();
+            turn = "w";
+            selected = null;
+            legalTargets = [];
+            gameOver = false;
+            gameOverText = "";
+            history = [{ board: cloneBoard(board), turn: "w", lastMove: null }];
+            moveLog = [];
+            currentIndex = 0;
             buildLabels();
             render();
         });
     }
 
-    resetBtn.addEventListener("click", () => {
-        board = freshBoard();
-        turn = "w";
-        selected = null;
-        legalTargets = [];
-        gameOver = false;
-        gameOverText = "";
-        history = [{ board: cloneBoard(board), turn: "w", lastMove: null }];
-        moveLog = [];
-        currentIndex = 0;
-        buildLabels();
-        render();
-    });
+    if (playAgainBtn) {
+        playAgainBtn.addEventListener("click", () => {
+            board = freshBoard();
+            turn = "w";
+            selected = null;
+            legalTargets = [];
+            gameOver = false;
+            gameOverText = "";
+            history = [{ board: cloneBoard(board), turn: "w", lastMove: null }];
+            moveLog = [];
+            currentIndex = 0;
+            buildLabels();
+            render();
+        });
+    }
 
-    playAgainBtn.addEventListener("click", () => {
-        board = freshBoard();
-        turn = "w";
-        selected = null;
-        legalTargets = [];
-        gameOver = false;
-        gameOverText = "";
-        history = [{ board: cloneBoard(board), turn: "w", lastMove: null }];
-        moveLog = [];
-        currentIndex = 0;
-        buildLabels();
-        render();
-    });
+    if (undoBtn) {
+        undoBtn.addEventListener("click", () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                board = cloneBoard(history[currentIndex].board);
+                turn = history[currentIndex].turn;
+                selected = null;
+                legalTargets = [];
+                render();
+            }
+        });
+    }
 
-    undoBtn.addEventListener("click", () => {
-        if (currentIndex > 0) {
-            currentIndex--;
+    if (redoBtn) {
+        redoBtn.addEventListener("click", () => {
+            if (currentIndex < history.length - 1) {
+                currentIndex++;
+                board = cloneBoard(history[currentIndex].board);
+                turn = history[currentIndex].turn;
+                selected = null;
+                legalTargets = [];
+                render();
+            }
+        });
+    }
+
+    if (moveLogEl) {
+        moveLogEl.addEventListener("click", (e) => {
+            const li = e.target.closest("li");
+            if (!li) return;
+            const idx = Number(li.dataset.index);
+            if (isNaN(idx) || idx < 0 || idx >= history.length) return;
+            currentIndex = idx;
             board = cloneBoard(history[currentIndex].board);
             turn = history[currentIndex].turn;
             selected = null;
             legalTargets = [];
             render();
-        }
-    });
-
-    redoBtn.addEventListener("click", () => {
-        if (currentIndex < history.length - 1) {
-            currentIndex++;
-            board = cloneBoard(history[currentIndex].board);
-            turn = history[currentIndex].turn;
-            selected = null;
-            legalTargets = [];
-            render();
-        }
-    });
-
-    moveLogEl.addEventListener("click", (e) => {
-        const li = e.target.closest("li");
-        if (!li) return;
-        const idx = Number(li.dataset.index);
-        if (isNaN(idx) || idx < 0 || idx >= history.length) return;
-        currentIndex = idx;
-        board = cloneBoard(history[currentIndex].board);
-        turn = history[currentIndex].turn;
-        selected = null;
-        legalTargets = [];
-        render();
-    });
+        });
+    }
 
     if (aiToggle) {
         aiToggle.addEventListener("change", (e) => {
