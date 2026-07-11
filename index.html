@@ -1,119 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Geo Chess — 14×14</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#121212">
-
-  
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Geo Chess - Big Board with Terrain</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <header class="zen-hide">
-    <h1>Geo Chess</h1>
-  </header>
-
-  <main class="game-layout">
-    
-    <!-- Top Global Match Control Header Bar -->
-    <div class="control-panel panel-card zen-hide">
-      <div class="control-row">
-        <button id="resetBtn" class="btn-danger">🔄 Reset Match</button>
-        <button id="undoBtn" class="btn-secondary" disabled>⬅️ Undo</button>
-        <button id="redoBtn" class="btn-secondary" disabled>➡️ Redo</button>
-      </div>
-
-      <div class="control-row">
-        <div class="toggle-group">
-          <label for="aiToggle" class="switch-label">🤖 AI Opponent:</label>
-          <input type="checkbox" id="aiToggle">
+    <!-- Compact Control Header Panel -->
+    <header class="controls-header">
+        <div class="header-left">
+            <h1>Geo Chess</h1>
+            <button id="zenToggleBtn" class="btn-ghost" title="Toggle Zen Mode">👁️‍🗨️</button>
         </div>
-        <div class="select-group">
-          <label for="aiDifficulty">Depth:</label>
-          <select id="aiDifficulty">
-            <option value="1">1 (Fast)</option>
-            <option value="2" selected>2 (Normal)</option>
-            <option value="3">3 (Thorough)</option>
-          </select>
+        <div class="header-right">
+            <button id="undoBtn" class="btn-ghost" disabled>↩️ Undo</button>
+            <button id="redoBtn" class="btn-ghost" disabled>↪️ Redo</button>
+            <button id="resetBtn" class="btn-ghost">🔄 Reset</button>
         </div>
-        <div id="aiThinking" class="thinking-banner hidden">Thinking...</div>
-      </div>
+    </header>
 
-      <div class="turn-widgets-container">
-        <div id="widget-w" class="turn-widget white-widget active">White Turn</div>
-        <div id="widget-b" class="turn-widget black-widget">Black Turn</div>
-      </div>
-    </div>
-
-    <!-- Main Game Structural Area Layout Container -->
-    <div class="game-container">
-      
-      <!-- Left Vertical Zoom State Slider Control Column -->
-      <div class="zoom-slider-container">
-        <div class="slider-labels">
-          <span>8x8</span>
-          <span>Crop</span>
-          <span>Full</span>
-        </div>
-        <input type="range" id="zoomSlider" min="0" max="2" step="1" value="0">
-      </div>
-
-      <!-- The Interaction Viewport Canvas Wrapper -->
-      <div class="board-outer">
-        <div id="ranks" class="axis-labels ranks-labels"></div>
-        <div id="board" class="board"></div>
-        <div id="files" class="axis-labels files-labels"></div>
+    <!-- Main Game Window Layout -->
+    <main class="game-layout">
         
-        <!-- Functional Mini-Map Overlay Layout Element -->
-        <div id="miniMap" class="mini-map hidden">
-          <div id="miniMapViewport" class="mini-map-viewport"></div>
+        <!-- Interactive Chess Sandbox Row Wrapper -->
+        <div class="board-container-wrapper">
+            
+            <!-- Left Side Control Stack (Dynamic Node Generation Hook) -->
+            <div class="left-control-stack">
+                <!-- Injected via JavaScript Patch:
+                     - Black Dynamic Node
+                     - Vertical Zoom Range Input
+                     - White Dynamic Node
+                -->
+            </div>
+
+            <!-- Outer Play Frame Boundary Container -->
+            <div class="board-outer">
+                <!-- Row Rank Side Label Bar -->
+                <div id="ranks" class="labels ranks-labels"></div>
+                
+                <!-- Grid Canvas Core Element Matrix -->
+                <div id="board" class="board"></div>
+                
+                <!-- Column File Lower Label Bar -->
+                <div id="files" class="labels files-labels"></div>
+
+                <!-- Isolated Game Over Win Notification Screen Overlay -->
+                <div id="winOverlay" class="win-overlay hidden">
+                    <div class="win-modal">
+                        <h2 id="winMessage">White Wins!</h2>
+                        <button id="playAgainBtn" class="btn-primary">Play Another Match</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contextual Navigation Radar Minimap Viewport -->
+            <div id="miniMap" class="mini-map hidden">
+                <div id="miniMapViewport" class="mini-map-viewport"></div>
+            </div>
+
         </div>
-      </div>
 
-    </div>
+        <!-- Meta Settings Dashboard & Log Columns Panel -->
+        <section class="game-panels">
+            
+            <!-- AI Integration Configuration Panel -->
+            <div class="panel-card ai-config-panel">
+                <h3>Match settings</h3>
+                <div class="control-group">
+                    <label class="switch-label">
+                        <input type="checkbox" id="aiToggle">
+                        <span class="switch-custom"></span>
+                        Enable AI Opponent (Black)
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label for="aiDifficulty">AI Engine Search Depth:</label>
+                    <select id="aiDifficulty" class="select-clean">
+                        <option value="1">Level 1 (Shallow)</option>
+                        <option value="2" selected>Level 2 (Balanced)</option>
+                        <option value="3">Level 3 (Deep Search)</option>
+                    </select>
+                </div>
+                <div id="aiThinking" class="ai-thinking-indicator hidden">
+                    <span class="spinner"></span> AI is analyzing tactical paths...
+                </div>
+            </div>
 
-    <!-- Modular Bottom Layout Navigation Toggles Row -->
-    <div class="bottom-controls-row">
-      <button id="zenToggleBtn" class="zen-toggle-btn" onclick="toggleZenMode()" title="Enter Zen Mode">👁️‍🗨️</button>
-    </div>
+            <!-- Live Match Move Notation History Log Panel -->
+            <div class="panel-card history-panel">
+                <h3>Notation History Log</h3>
+                <div class="log-scroll-frame">
+                    <ol id="moveLog" class="move-log-list">
+                        <li class="active" data-index="0">Start</li>
+                    </ol>
+                </div>
+            </div>
 
-    <!-- Map Terrain Rules Legend Grid Panel -->
-    <div class="legend-card panel-card zen-hide">
-      <h3>Terrain Mechanics Guide</h3>
-      <div class="legend-grid">
-        <div class="legend-item"><span class="swatch plain"></span><strong>Plains:</strong> Standard chess pathing rules.</div>
-        <div class="legend-item"><span class="swatch mountain"></span><strong>Mountains:</strong> Impassable blockades. Only Knights may vault over.</div>
-        <div class="legend-item"><span class="swatch forest"></span><strong>Forest:</strong> Blocks sliding views. Pieces must stop inside; Knights can jump over.</div>
-        <div class="legend-item"><span class="swatch river"></span><strong>River:</strong> Strips sliding ranges. Moving pieces must stop immediately upon entry.</div>
-        <div class="legend-item"><span class="swatch ford"></span><strong>Ford:</strong> Shallow breaks allowing normal sliding movement directly through water.</div>
-        <div class="legend-item"><span class="swatch lake"></span><strong>Lake:</strong> Inner deep water blockades. Units inside cannot capture other aquatic tiles.</div>
-      </div>
-    </div>
+            <!-- Map Environmental Terrain Legend Reference Card -->
+            <div class="panel-card legend-card">
+                <h3>Environmental Map Legend</h3>
+                <div class="legend-grid">
+                    <div class="legend-item"><span class="key-patch plain"></span> Plain (Standard Rules)</div>
+                    <div class="legend-item"><span class="key-patch home"></span> Home Rank Zones</div>
+                    <div class="legend-item"><span class="key-patch mountain"></span> Mountain (Impassable Block)</div>
+                    <div class="legend-item"><span class="key-patch forest"></span> Forest (Impassable Block)</div>
+                    <div class="legend-item"><span class="key-patch river"></span> River (Halts Sliders / No Water-Water Capture)</div>
+                    <div class="legend-item"><span class="key-patch lake"></span> Lake (Halts Sliders / No Water-Water Capture)</div>
+                    <div class="legend-item"><span class="key-patch ford"></span> Ford Shallow (Safe River Crossing Zone)</div>
+                </div>
+            </div>
 
-    <!-- Move History Log Table List Panel -->
-    <div class="panel-card zen-hide">
-      <h3>Match Log History</h3>
-      <div class="log-scroll-wrapper">
-        <ol id="moveLog" class="move-history-list"></ol>
-      </div>
-    </div>
+        </section>
 
-  </main>
+    </main>
 
-  <!-- Winner Decided End Game Banner Overlay Modal Screen -->
-  <div id="winOverlay" class="modal-overlay hidden">
-    <div class="modal-card">
-      <h2 id="winMessage">White Wins!</h2>
-      <button id="playAgainBtn" class="btn-primary">Play Another Match</button>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
-
+    <script src="app.js"></script>
 </body>
-    </html>
-  
+</html>
