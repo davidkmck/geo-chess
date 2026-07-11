@@ -1,4 +1,4 @@
-(function () {
+(function () {  // 6:15 2026-07-11
     "use strict";
 
     // ==========================================================================
@@ -544,4 +544,44 @@
         document.getElementById("btn-another-match")?.addEventListener("click", () => document.getElementById("btn-reset").click());
         document.getElementById("btn-flip")?.addEventListener("click", () => { isFlipped = !isFlipped; render(); });
         document.getElementById("btn-zen")?.addEventListener("click", () => {
-            hideAllUi = !hideAllUi; document.body.classList.toggle("zen-active", hideAll
+            hideAllUi = !hideAllUi; document.body.classList.toggle("zen-active", hideAllUi);
+        });
+        document.getElementById("ai-toggle")?.addEventListener("change", (e) => {
+            aiEnabled = e.target.checked; if (!gameOver && aiEnabled && turn === "b") triggerAIAsyncExecution();
+        });
+        document.getElementById("ai-depth")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value) || 2; });
+
+        const outer = document.getElementById("board-outer");
+        if (outer) {
+            outer.addEventListener("mousedown", (e) => {
+                if (zoomPreset === 1) return; 
+                isPanning = true; startPanX = e.clientX - panX; startPanY = e.clientY - panY;
+            });
+            window.addEventListener("mousemove", (e) => {
+                if (!isPanning) return;
+                panX = e.clientX - startPanX; panY = e.clientY - startPanY;
+                let scaleFactor = [1.0, 1.75, 3.5][zoomPreset - 1] || 1.0;
+                const boundaryLimit = (SIZE * 40 * (scaleFactor - 1)) / 2;
+                panX = Math.max(-boundaryLimit, Math.min(boundaryLimit, panX));
+                panY = Math.max(-boundaryLimit, Math.min(boundaryLimit, panY));
+                updateCameraMatrix();
+            });
+            window.addEventListener("mouseup", () => { isPanning = false; });
+        }
+    }
+
+    function init() {
+        board = freshBoard();
+        const aiToggle = document.getElementById("ai-toggle"); if (aiToggle) aiToggle.checked = aiEnabled;
+        const zoomSlider = document.getElementById("zoom-slider");
+        if (zoomSlider) {
+            zoomSlider.min = "1"; zoomSlider.max = "3"; zoomSlider.step = "1"; zoomSlider.value = zoomPreset;
+            zoomSlider.addEventListener("input", function (e) {
+                zoomPreset = parseInt(e.target.value); panX = 0; panY = 0; updateCameraMatrix();
+            });
+        }
+        setupControlLayoutListeners(); saveState(); render(); updateCameraMatrix();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+})();
