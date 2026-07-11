@@ -721,7 +721,7 @@
     updateAIThinkingUI(true);
     const expectedIndex = currentIndex;
 
-    // Use requestAnimationFrame to ensure the UI paints the "Thinking..." status instantly before starting the heavy evaluation loop
+    // Use requestAnimationFrame to ensure the UI paints the "Thinking..." status instantly
     requestAnimationFrame(() => {
       setTimeout(() => {
         let result = null;
@@ -731,19 +731,18 @@
           result = null;
         }
         
-        // After calculation complete, hold the thinking status for a 2-second organic buffer before physical board execution
-        setTimeout(() => {
-          aiThinking = false;
-          updateAIThinkingUI(false);
+        // Immediately drop the thinking state and execute the move as soon as computation finishes
+        aiThinking = false;
+        updateAIThinkingUI(false);
 
-          if (currentIndex !== expectedIndex || gameOver || turn !== aiColor) return;
-          if (!result || !result.move) return;
+        if (currentIndex !== expectedIndex || gameOver || turn !== aiColor) return;
+        if (!result || !result.move) return;
 
-          animateAndMakeMove(result.move.from.r, result.move.from.f, result.move.move);
-        }, 2000); 
+        animateAndMakeMove(result.move.from.r, result.move.from.f, result.move.move);
       }, 50);
     });
   }
+  
 
   function pieceLabel(type) {
     return type === "N" ? "N" : type === "P" ? "" : type;
