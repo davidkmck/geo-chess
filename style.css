@@ -62,9 +62,10 @@ body {
     border-radius: 6px; 
     overflow: hidden; 
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6); 
+    cursor: grab;
 }
+.board-outer:active { cursor: grabbing; }
 
-/* THE FIX: Absolute positioning forces the grid to fill the outer box */
 .board {
     display: grid !important;
     grid-template-columns: repeat(14, 1fr);
@@ -73,7 +74,7 @@ body {
     top: 0; left: 0; right: 0; bottom: 0;
     width: 100%; height: 100%;
     margin: 0; padding: 0;
-    transform-origin: top left;
+    transform-origin: center;
     transition: transform 0.15s ease-out;
 }
 
@@ -111,10 +112,17 @@ body {
 /* ==========================================================================
    4. Zen Mode, Labels & Meta Dashboards
    ========================================================================== */
-body.zen-active .controls-header,
-body.zen-active .game-panels,
-body.zen-active .left-control-stack,
-body.zen-active .labels { display: none !important; }
+/* Hide the header background to isolate the Zen button */
+body.zen-active .controls-header { background-color: transparent; border-bottom: none; }
+
+/* Target specific buttons/panels to hide, leaving the required components visible */
+body.zen-active .controls-header h1,
+body.zen-active .controls-header #btn-reset,
+body.zen-active .controls-header #btn-flip,
+body.zen-active .header-right,
+body.zen-active .game-panels {
+    display: none !important;
+}
 
 .labels { position: absolute; display: grid; pointer-events: none; font-family: monospace; font-size: 9px; font-weight: bold; color: rgba(255,255,255,0.4); z-index: 10; }
 .ranks-labels { left: 4px; top: 0; height: 100%; grid-template-rows: repeat(14, 1fr); align-items: center; }
