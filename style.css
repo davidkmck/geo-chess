@@ -6,11 +6,10 @@
     --text-main: #e0e0e0;
     --text-muted: #aaaaaa;
     
-    /* Core Accents */
     --accent-gold: #ffc107;
     --accent-gold-hover: #e0a800;
     
-    /* Terrain Matrix Colors */
+    /* Terrain Colors */
     --clr-light: #e9edcc;
     --clr-dark: #779556;
     --clr-mountain: #666666;
@@ -53,30 +52,36 @@ body {
 /* ==========================================================================
    2. Master Board Grid
    ========================================================================== */
-.board-outer { position: relative; width: 100%; max-width: 560px; aspect-ratio: 1 / 1; background-color: var(--bg-board-edge); border: 2px solid var(--border-color); border-radius: 6px; overflow: hidden; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6); }
+.board-outer { 
+    position: relative; 
+    width: 100%; 
+    max-width: 560px; 
+    aspect-ratio: 1 / 1; 
+    background-color: var(--bg-board-edge); 
+    border: 2px solid var(--border-color); 
+    border-radius: 6px; 
+    overflow: hidden; 
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6); 
+}
 
+/* THE FIX: Absolute positioning forces the grid to fill the outer box */
 .board {
     display: grid !important;
     grid-template-columns: repeat(14, 1fr);
     grid-template-rows: repeat(14, 1fr);
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%;
+    margin: 0; padding: 0;
     transform-origin: top left;
     transition: transform 0.15s ease-out;
 }
 
 .cell {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    box-sizing: border-box;
-    user-select: none;
-    -webkit-user-select: none;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; box-sizing: border-box;
+    user-select: none; -webkit-user-select: none;
 }
 
 .cell.light { background-color: var(--clr-light); }
