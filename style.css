@@ -230,3 +230,13 @@ body.zen-active .game-panels {
 .win-modal-content button:hover {
     background: #e0a800;
 }
+
+/* Terrain Reset for None mode */
+.board.terrain-none .terrain-mountain,
+.board.terrain-none .terrain-forest,
+.board.terrain-none .terrain-lake,
+.board.terrain-none .terrain-river,
+.board.terrain-none .terrain-ford {
+    background-image: none !important;
+    background-color: transparent !important;
+}
