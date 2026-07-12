@@ -477,18 +477,29 @@ function makeMove(from, to) {
         FILES.forEach(file => { const label = document.createElement("div"); label.textContent = file.toUpperCase(); filesContainer.appendChild(label); });
     }
 
-    function renderMoveLog() {
-        const listEl = document.getElementById("move-log-list");
-        if (!listEl) return;
-        listEl.innerHTML = "";
-        moveLog.forEach((move, idx) => {
-            const li = document.createElement("li");
-            li.textContent = `${idx + 1}. ${move}`;
-            if (idx === currentIndex - 1) li.classList.add("active");
-            li.addEventListener("click", () => jumpToTimelineIndex(idx + 1));
-            listEl.appendChild(li);
-        });
+function renderMoveLog() {
+    const listEl = document.getElementById("move-log-list");
+    if (!listEl) return;
+    
+    // Create/Update the button
+    let copyBtn = document.getElementById("copy-history-btn");
+    if (!copyBtn) {
+        copyBtn = document.createElement("button");
+        copyBtn.id = "copy-history-btn";
+        copyBtn.textContent = "📋 Copy History";
+        copyBtn.addEventListener("click", copyMoveHistory);
+        listEl.parentNode.insertBefore(copyBtn, listEl); // Inserts before the list
     }
+
+    listEl.innerHTML = "";
+    moveLog.forEach((move, idx) => {
+        const li = document.createElement("li");
+        li.textContent = `${idx + 1}. ${move}`;
+        if (idx === currentIndex - 1) li.classList.add("active");
+        li.addEventListener("click", () => jumpToTimelineIndex(idx + 1));
+        listEl.appendChild(li);
+    });
+}
 
     function updateModalScreenState() {
         const overlay = document.getElementById("win-overlay");
@@ -640,6 +651,20 @@ function isSquareAttacked(r, f, color, bMatrix) {
     }
     return false;
 }
+
+// copying move history to clipboard
+    function copyMoveHistory() {
+    const historyText = moveLog.map((move, idx) => `${idx + 1}. ${move}`).join('\n');
+    navigator.clipboard.writeText(historyText).then(() => {
+        alert("Move history copied to clipboard!");
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+    
+    
+
+    ///   init
     
     function init() {
         board = freshBoard();
