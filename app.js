@@ -97,12 +97,65 @@
         return list;
     }
 
+    // RESTORED: Threat detection
+    function isSquareAttacked(r, f, color, bMatrix) {
+        const enemyColor = color === "w" ? "b" : "w";
+        for (let row = 0; row < SIZE; row++) {
+            for (let file = 0; file < SIZE; file++) {
+                const p = bMatrix[row][file];
+                if (p && p.color === enemyColor) {
+                    const moves = getMoves(row, file, bMatrix);
+                    if (moves.some(m => m.r === r && m.f === f)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // RESTORED: Checkmate logic
+    function isCheckmate(color, bMatrix) {
+        let kingPos = null;
+        for (let r = 0; r < SIZE; r++) {
+            for (let f = 0; f < SIZE; f++) {
+                const p = bMatrix[r][f];
+                if (p && p.type === "K" && p.color === color) {
+                    kingPos = { r, f };
+                    break;
+                }
+            }
+        }
+        
+        if (!kingPos) return false;
+        if (!isSquareAttacked(kingPos.r, kingPos.f, color, bMatrix)) return false;
+
+        const allMoves = generateAllLegalMoves(color, bMatrix);
+        for (const move of allMoves) {
+            const nextBoard = cloneBoard(bMatrix);
+            nextBoard[move.to.r][move.to.f] = { ...nextBoard[move.from.r][move.from.f], moved: true };
+            nextBoard[move.from.r][move.from.f] = null;
+            
+            let nextKingPos = null;
+            for (let r = 0; r < SIZE; r++) {
+                for (let f = 0; f < SIZE; f++) {
+                    if (nextBoard[r][f] && nextBoard[r][f].type === "K" && nextBoard[r][f].color === color) {
+                        nextKingPos = { r, f };
+                    }
+                }
+            }
+            if (nextKingPos && !isSquareAttacked(nextKingPos.r, nextKingPos.f, color, nextBoard)) {
+                return false; 
+            }
+        }
+        return true; 
+    }
+
     function makeMove(from, to) {
         const p = board[from.r][from.f];
         const captured = board[to.r][to.f];
         board[to.r][to.f] = { ...p, moved: true };
         board[from.r][from.f] = null;
         
+        // 1. Check Regicide
         if (captured && captured.type === "K") {
             gameOver = true;
             gameOverText = p.color === "w" ? "White Wins!" : "Black Wins!";
@@ -111,6 +164,15 @@
         }
 
         turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
+        
+        // 2. Check Checkmate (RESTORED)
+        if (isCheckmate(turn, board)) {
+            gameOver = true;
+            gameOverText = turn === "w" ? "Black Wins by Checkmate!" : "White Wins by Checkmate!";
+            render();
+            return;
+        }
+
         render();
         if (aiEnabled && turn === "b" && !gameOver) triggerAI();
     }
@@ -157,7 +219,6 @@
             panX = startPanX + (e.clientX - startMouseX) / scaleFactor;
             panY = startPanY + (e.clientY - startMouseY) / scaleFactor;
 
-            // Strict bounds clamping so board doesn't detach from viewport
             const w = outer.offsetWidth;
             const h = outer.offsetHeight;
             const maxTranslateX = (w * scaleFactor - w) / scaleFactor;
@@ -250,7 +311,6 @@
         
         document.getElementById("zoom-slider")?.addEventListener("input", (e) => { 
             zoomPreset = parseInt(e.target.value); 
-            // Reset coordinates on zoom jump
             panX = 0; panY = 0; 
             render(); 
         });
