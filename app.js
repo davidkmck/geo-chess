@@ -694,6 +694,9 @@ function copyMoveHistory() {
         }
     }
 
+       // ADD THIS SAFETY CHECK:
+    if (!kingPos) return false;
+       
     // 2. Is the King currently attacked?
     if (!isSquareAttacked(kingPos.r, kingPos.f, color, bMatrix)) return false;
 
