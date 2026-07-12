@@ -5,7 +5,7 @@
     // 1. Core Config & Global State Matrix
     // ==========================================================================
     const SIZE = 14;
-    const FILES = "abcdefghijklmn".split("");
+    const FILES = "abcdefghijklmn".split("");c
 
     let board = [];
     let turn = "w";
@@ -653,15 +653,17 @@ function isSquareAttacked(r, f, color, bMatrix) {
 }
 
 // copying move history to clipboard
-    function copyMoveHistory() {
+function copyMoveHistory() {
+    // Joins the current moveLog array into a clean, readable string
     const historyText = moveLog.map((move, idx) => `${idx + 1}. ${move}`).join('\n');
+    
     navigator.clipboard.writeText(historyText).then(() => {
-        alert("Move history copied to clipboard!");
+        // You could also trigger a small UI toast notification here
+        console.log("History copied to clipboard!");
     }).catch(err => {
         console.error('Failed to copy: ', err);
-    });
+    })
 }
-    
     
 
     ///   init
