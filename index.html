@@ -10,6 +10,7 @@
     <header class="controls-header">
         <div class="header-left">
             <h1>Topos Chess</h1>
+            <button id="btn-zen" class="btn-ghost">👁️ Zen</button>
             <button id="btn-reset" class="btn-ghost">🔄 Reset</button>
             <button id="btn-flip" class="btn-ghost">🔁 Flip</button>
         </div>
@@ -17,8 +18,15 @@
 
     <main class="game-layout">
         <div class="board-container-wrapper">
+            <div class="left-control-stack">
+                <div id="node-b" class="turn-indicator-node" title="Black's Turn"></div>
+                <input type="range" id="zoom-slider" class="vertical-slider" min="1" max="3" step="1" value="1">
+                <div id="node-w" class="turn-indicator-node active-glow" title="White's Turn"></div>
+            </div>
+
             <div class="board-outer" id="board-outer">
                 <div class="board" id="board"></div>
+                <div id="mini-map" class="mini-map"><div id="mini-viewport" class="mini-map-viewport"></div></div>
                 <div id="win-overlay" class="win-overlay hidden">
                     <div class="win-modal-content">
                         <h2 id="win-title">White Wins!</h2>
