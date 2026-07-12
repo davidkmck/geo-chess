@@ -41,46 +41,51 @@ body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; }
 }
 .btn-primary:hover { filter: brightness(1.1); }
 
-.game-layout { display: flex; flex-direction: column; align-items: center; padding: 20px; }
-
-/* Ensure the wrapper doesn't force unnecessary space */
-.board-container-wrapper {
+/* 1. Ensure the container fits the screen width and uses a row layout */
+.game-layout {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    gap: 5px; /* Reduced gap between controls and board */
-    width: 100%;
-    padding: 0 5px;
+    width: 100vw;
+    overflow-x: hidden; /* Prevents horizontal scrolling */
+    padding: 5px;
 }
 
-/* Tighten the control stack */
+.board-container-wrapper {
+    display: flex;
+    flex-direction: row; /* Controls on left, board on right */
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    gap: 2px; /* Tight gap so it fits */
+}
+
+/* 2. Make controls compact */
 .left-control-stack {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 5px; /* Reduced padding */
-    gap: 10px;        /* Tighter gap */
-    z-index: 10;
+    width: 30px; /* Slimmer width */
+    height: 80vw;
 }
+
 
 .turn-indicator-node { width: 20px; height: 20px; border-radius: 50%; background: #333; transition: background 0.2s, box-shadow 0.2s; }
 .active-glow { background: var(--accent-gold); box-shadow: 0 0 10px var(--accent-gold); }
 .vertical-slider { -webkit-appearance: slider-vertical; height: 150px; }
 
+/* 3. Scale the board to fit: 
+   View width (vw) minus the control stack width (30px) and gaps */
 .board-outer {
-    /* Use relative units so it fits on mobile */
-    width: 85vw; 
-    height: 85vw; 
-    max-width: 600px;
-    max-height: 600px;
+    width: 80vw; 
+    height: 80vw;
     position: relative;
     overflow: hidden;
 }
 .board-outer.panning { cursor: grabbing; }
 .board-outer.panning .cell { cursor: grabbing; }
 
-/* Ensure the grid doesn't overflow its container */
 .board {
     display: grid !important;
     grid-template-columns: repeat(14, 1fr);
