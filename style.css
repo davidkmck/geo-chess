@@ -46,7 +46,35 @@ body {
 
 .game-layout { display: flex; flex-direction: column; align-items: center; max-width: 1300px; margin: 0 auto; padding: 12px; gap: 20px; }
 .board-container-wrapper { display: flex; flex-direction: row; align-items: center; justify-content: center; position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
+
+/*
 .left-control-stack { display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 300px; margin-right: 14px; z-index: 10; flex-shrink: 0; }
+*/
+.left-control-stack {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Pushes items to the ends */
+    align-items: center;
+    height: 100%; /* Ensure the stack takes full height of the container */
+    padding: 10px 0;
+    box-sizing: border-box;
+}
+
+/* Ensure the indicators have a visible size and shape */
+.turn-indicator-node {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #333; /* Default dark */
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.active-glow {
+    box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.8);
+    background-color: #ffc107; /* Your accent color */
+}
+
+
 .vertical-slider { -webkit-appearance: slider-vertical; writing-mode: bt-lr; width: 24px; height: 140px; padding: 0; margin: 8px 0; cursor: pointer; }
 
 /* ==========================================================================
