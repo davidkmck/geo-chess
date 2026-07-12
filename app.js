@@ -12,10 +12,10 @@
             "pppppppppppppp", "pppppppppppppp"
         ],
         alternative: [
-            "pppppppppppppp", "pppppppppppppp", "ppppFFrrpppppp",
-            "ppppFFrrpppppp", "pppppppppppppp", "ppMMppppppMMpp",
+            "pppppppppppppp", "pppppppppppppp", "pppppppppppppp",
+            "pppppppppppppp", "ppppFFrrpppppp", "ppMMppppppMMpp",
             "ppMMppppppMMpp", "ppMMppppppMMpp", "ppMMppppppMMpp",
-            "pppppppppppppp", "pprrFFpppprrFF", "pprrFFpppprrFF",
+            "pppprrFFpppppp", "pppppppppppppp", "pppppppppppppp",
             "pppppppppppppp", "pppppppppppppp"
         ],
         none: Array(14).fill("pppppppppppppp")
@@ -197,7 +197,8 @@
                 const p = board[r][f];
                 if (p) {
                     const pieceEl = document.createElement("span");
-                    pieceEl.className = `piece ${p.color}`; pieceEl.textContent = PIECE_SYMBOLS[p.color][p.type];
+                    pieceEl.className = `piece ${p.color === "w" ? "white" : "black"}`; 
+                    pieceEl.textContent = PIECE_SYMBOLS[p.color][p.type];
                     pieceEl.draggable = !gameOver && (!aiEnabled || turn === "w");
                     pieceEl.addEventListener("dragstart", (e) => { selected = {r, f}; e.dataTransfer.setData("text", JSON.stringify({r, f})); });
                     cellEl.appendChild(pieceEl);
@@ -238,7 +239,7 @@
             nb[m.to.r][m.to.f] = nb[m.from.r][m.from.f]; nb[m.from.r][m.from.f] = null;
             let nk = null;
             for(let r=0; r<SIZE; r++) for(let f=0; f<SIZE; f++) if(nb[r][f] && nb[r][f].type === "K" && nb[r][f].color === color) nk = {r, f};
-            return isSquareAttacked(nk.r, nk.f, color, nb);
+            return nk && isSquareAttacked(nk.r, nk.f, color, nb);
         });
     }
 
