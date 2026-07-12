@@ -44,8 +44,11 @@
     let lastMoveSource = null; 
     let lastMoveTarget = null; 
 
-    // Terrain
-    const TERRAIN_LAYOUT = [
+    // ---- Terrain sets ----
+    // "default" is the original hand-authored layout. "alternative" is a left-right
+    // mirror of it (keeps things balanced/fair while giving a different feel).
+    // "none" is a flat, all-plain board (classic chess behavior).
+    const TERRAIN_DEFAULT = [
         "pppppppppppppp", "pppppppppppppp", "pppppppppppppp",
         "ppMMFFpppppppp", "ppMMFFLLpppppp", "ppppppLLpppppp",
         "rrrfrrrppppppp", "pppppprrrrrrfr", "ppppppLLpppppp",
@@ -53,8 +56,21 @@
         "pppppppppppppp", "pppppppppppppp"
     ];
 
+    const TERRAIN_ALTERNATIVE = [
+        "pppppppppppppp", "pppppppppppppp", "pppppppppppppp",
+        "ppppppppFFMMpp", "ppppppLLFFMMpp", "ppppppLLpppppp",
+        "ppppppprrrfrrr", "rfrrrrrrpppppp", "ppppppLLpppppp",
+        "ppMMFFLLpppppp", "ppMMFFpppppppp", "pppppppppppppp",
+        "pppppppppppppp", "pppppppppppppp"
+    ];
+
+    const TERRAIN_NONE = Array.from({ length: SIZE }, () => "p".repeat(SIZE));
+
+    const TERRAIN_SETS = { default: TERRAIN_DEFAULT, alternative: TERRAIN_ALTERNATIVE, none: TERRAIN_NONE };
+    let activeTerrainKey = "default";
+
     const CHAR_TO_TERRAIN = { 'p': "plain", 'M': "mountain", 'F': "forest", 'L': "lake", 'r': "river", 'f': "ford" };
-    function terrain(r, f) { return CHAR_TO_TERRAIN[TERRAIN_LAYOUT[r][f]] || "plain"; }
+    function terrain(r, f) { return CHAR_TO_TERRAIN[TERRAIN_SETS[activeTerrainKey][r][f]] || "plain"; }
 
     function isWater(t) { return t === "river" || t === "lake"; }
     function isForest(t) { return t === "forest"; }
@@ -245,10 +261,26 @@
         }, 50);
     }
 
+    // ---- Camera: zoom + pan ----
+    function currentScale() { return [1.0, 1.75, 3.5][zoomPreset - 1] || 1.0; }
+
+    function clampPan() {
+        const scale = currentScale();
+        if (scale <= 1) { panX = 0; panY = 0; return; }
+        // translate() is applied before scale() in "scale(s) translate(x,y)", so the
+        // on-screen displacement of a translate unit is (unit * s). Keep the scaled
+        // board covering the 600x600 viewport by bounding the translate accordingly.
+        const boardPx = 600;
+        const maxOffset = ((scale - 1) * boardPx) / (2 * scale);
+        panX = Math.max(-maxOffset, Math.min(maxOffset, panX));
+        panY = Math.max(-maxOffset, Math.min(maxOffset, panY));
+    }
+
     function updateCameraMatrix() {
         const boardEl = document.getElementById("board");
         if (!boardEl) return;
-        let scaleFactor = [1.0, 1.75, 3.5][zoomPreset - 1] || 1.0;
+        clampPan();
+        const scaleFactor = currentScale();
         boardEl.style.transform = `scale(${scaleFactor}) translate(${panX}px, ${panY}px)`;
         updateMinimapViewportIndicator(scaleFactor);
     }
@@ -258,6 +290,56 @@
         if (!vp) return;
         const pct = (1 / scale) * 100;
         vp.style.width = `${pct}%`; vp.style.height = `${pct}%`;
+        // Position the viewport box to reflect current pan (approximate, center-based)
+        const miniPx = 100; // mini-map is 100x100
+        const offsetPxX = scale > 1 ? (-panX / (600 / miniPx)) : 0;
+        const offsetPxY = scale > 1 ? (-panY / (600 / miniPx)) : 0;
+        vp.style.left = `calc(50% - ${pct / 2}% - ${offsetPxX}px)`;
+        vp.style.top = `calc(50% - ${pct / 2}% - ${offsetPxY}px)`;
+    }
+
+    function setupPanning() {
+        const boardOuter = document.getElementById("board-outer");
+        if (!boardOuter) return;
+
+        function beginPan(clientX, clientY, targetEl) {
+            if (currentScale() <= 1) return false;
+            if (targetEl && targetEl.classList && targetEl.classList.contains("piece")) return false;
+            isPanning = true;
+            startMouseX = clientX; startMouseY = clientY;
+            startPanX = panX; startPanY = panY;
+            boardOuter.classList.add("panning");
+            return true;
+        }
+        function movePan(clientX, clientY) {
+            if (!isPanning) return;
+            const scale = currentScale();
+            panX = startPanX + (clientX - startMouseX) / scale;
+            panY = startPanY + (clientY - startMouseY) / scale;
+            updateCameraMatrix();
+        }
+        function endPan() {
+            isPanning = false;
+            boardOuter.classList.remove("panning");
+        }
+
+        boardOuter.addEventListener("mousedown", (e) => {
+            if (beginPan(e.clientX, e.clientY, e.target)) e.preventDefault();
+        });
+        window.addEventListener("mousemove", (e) => movePan(e.clientX, e.clientY));
+        window.addEventListener("mouseup", endPan);
+
+        boardOuter.addEventListener("touchstart", (e) => {
+            const t = e.touches[0];
+            if (beginPan(t.clientX, t.clientY, e.target)) e.preventDefault();
+        }, { passive: false });
+        boardOuter.addEventListener("touchmove", (e) => {
+            if (!isPanning) return;
+            const t = e.touches[0];
+            movePan(t.clientX, t.clientY);
+            e.preventDefault();
+        }, { passive: false });
+        boardOuter.addEventListener("touchend", endPan);
     }
 
     function render() {
@@ -290,7 +372,6 @@
                     cellEl.appendChild(pieceEl);
                 }
 
-                // Drag-and-drop target handlers (previously missing — drops did nothing)
                 cellEl.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
                 cellEl.addEventListener("drop", (e) => {
                     e.preventDefault();
@@ -306,6 +387,7 @@
         updateModalScreenState();
         syncTurnIndicators();
         renderMoveLog();
+        updateTerrainLockState();
     }
 
     function handleDrop(from, to) {
@@ -352,14 +434,17 @@
         document.getElementById("ai-thinking")?.classList.toggle("hidden", !v);
     }
 
-    // FIX: `element?.prop = value` is invalid JS syntax (SyntaxError: Invalid left-hand
-    // side in assignment). That single line was breaking the ENTIRE script — nothing on
-    // the page could work because the file failed to parse at all. Rewritten below.
     function updateUndoRedoButtons() {
         const undoBtn = document.getElementById("btn-undo");
         if (undoBtn) undoBtn.disabled = currentIndex <= 0;
         const redoBtn = document.getElementById("btn-redo");
         if (redoBtn) redoBtn.disabled = currentIndex >= history.length - 1;
+    }
+
+    // Lock the terrain selector once any move has been made this game.
+    function updateTerrainLockState() {
+        const sel = document.getElementById("terrain-select");
+        if (sel) sel.disabled = moveLog.length > 0;
     }
 
     function handleSquareClick(r, f) {
@@ -390,20 +475,38 @@
         });
     }
 
+    function resetGame() {
+        board = freshBoard();
+        turn = "w"; history = []; moveLog = []; currentIndex = 0;
+        gameOver = false; gameOverText = "";
+        selected = null; legalTargets = [];
+        panX = 0; panY = 0; zoomPreset = 1;
+        const zoomSlider = document.getElementById("zoom-slider");
+        if (zoomSlider) zoomSlider.value = 1;
+        saveState(); render(); updateCameraMatrix();
+    }
+
     function setupControlLayoutListeners() {
-        document.getElementById("btn-reset")?.addEventListener("click", () => {
-            board = freshBoard(); turn = "w"; history = []; moveLog = []; currentIndex = 0; saveState(); render();
-        });
-        document.getElementById("btn-another-match")?.addEventListener("click", () => document.getElementById("btn-reset").click());
+        document.getElementById("btn-reset")?.addEventListener("click", resetGame);
+        document.getElementById("btn-another-match")?.addEventListener("click", resetGame);
         document.getElementById("btn-flip")?.addEventListener("click", () => { isFlipped = !isFlipped; render(); });
         document.getElementById("btn-zen")?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; });
+        document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value, 10) || 2; });
         document.getElementById("zoom-slider")?.addEventListener("input", (e) => { zoomPreset = parseInt(e.target.value); updateCameraMatrix(); });
+        document.getElementById("terrain-select")?.addEventListener("change", (e) => {
+            if (moveLog.length > 0) { e.target.value = activeTerrainKey; return; } // safety net, select is also disabled
+            activeTerrainKey = e.target.value;
+            render();
+        });
     }
 
     function init() {
         board = freshBoard();
+        const depthSel = document.getElementById("ai-depth-select");
+        if (depthSel) aiDepth = parseInt(depthSel.value, 10) || 2;
         setupControlLayoutListeners();
+        setupPanning();
         renderLabels();
         render();
         updateCameraMatrix();
