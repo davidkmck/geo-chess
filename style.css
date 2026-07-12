@@ -52,19 +52,13 @@ body {
 /* ==========================================================================
    2. Master Board Grid
    ========================================================================== */
-.board-outer { 
-    position: relative; 
-    width: 100%; 
-    max-width: 560px; 
-    aspect-ratio: 1 / 1; 
-    background-color: var(--bg-board-edge); 
-    border: 2px solid var(--border-color); 
-    border-radius: 6px; 
-    overflow: hidden; 
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6); 
-    cursor: grab;
+.board-outer {
+    aspect-ratio: 1 / 1; /* Forces the container to be a square */
+    width: 100%;        /* Or whatever width you prefer */
+    max-width: 600px;   /* Prevents it from getting too huge on tablets */
+    margin: 0 auto;     /* Centers the board */
+    position: relative;
 }
-.board-outer:active { cursor: grabbing; }
 
 .board {
     display: grid !important;
@@ -79,17 +73,12 @@ body {
 }
 
 .cell {
-    position: relative;
+    aspect-ratio: 1 / 1; /* Forces every cell to be a square */
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    user-select: none;
-    -webkit-user-select: none;
-    
-    /* Perfect Square Logic */
-    aspect-ratio: 1 / 1;
-    width: 100%;
 }
 
 .cell.light { background-color: var(--clr-light); }
