@@ -9,7 +9,6 @@
 
     let board = [], turn = "w", selected = null, legalTargets = [], gameOver = false, gameOverText = "", currentTerrain = 'default';
     let zoomPreset = 1, panX = 0, panY = 0, isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
-    let history = [], moveLog = [], currentIndex = 0;
 
     const TERRAIN_PRESETS = {
         default: ["pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "ppMMFFpppppppp", "ppMMFFLLpppppp", "ppppppLLpppppp", "rrrfrrrppppppp", "pppppprrrrrrfr", "ppppppLLpppppp", "ppppppLLFFMMpp", "ppppppppFFMMpp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp"],
@@ -97,19 +96,31 @@
 
     function makeMove(from, to) {
         const p = board[from.r][from.f];
+        const captured = board[to.r][to.f];
         board[to.r][to.f] = { ...p, moved: true };
         board[from.r][from.f] = null;
-        turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; render();
-        if (aiEnabled && turn === "b") triggerAI();
+        
+        if (captured && captured.type === "K") {
+            gameOver = true;
+            gameOverText = p.color === "w" ? "White Wins!" : "Black Wins!";
+            render();
+            return;
+        }
+
+        turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
+        render();
+        if (aiEnabled && turn === "b" && !gameOver) triggerAI();
     }
 
     function triggerAI() {
         if (gameOver) return;
         aiThinking = true;
         setTimeout(() => {
-            const res = AI.minimax(board, aiDepth, -Infinity, Infinity, false, PIECE_VALUES, generateAllLegalMoves, cloneBoard);
-            aiThinking = false;
-            if (res.move) makeMove(res.move.from, res.move.to);
+            if (typeof AI !== 'undefined') {
+                const res = AI.minimax(board, aiDepth, -Infinity, Infinity, false, PIECE_VALUES, generateAllLegalMoves, cloneBoard);
+                aiThinking = false;
+                if (res && res.move) makeMove(res.move.from, res.move.to);
+            }
         }, 50);
     }
 
@@ -124,8 +135,17 @@
             for (let f = 0; f < SIZE; f++) {
                 const cell = document.createElement("div");
                 cell.className = `cell ${(r + f) % 2 === 0 ? 'light' : 'dark'} terrain-${terrain(r, f)}`;
-                if (selected && selected.r === r && selected.f === f) cell.classList.add("selected");
-                if (legalTargets.some(t => t.r === r && t.f === f)) cell.classList.add("legal-target");
+                
+                if (selected && selected.r === r && selected.f === f) {
+                    cell.classList.add("selected");
+                }
+                
+                // FIX #3: Applies "legal-capture" for pieces, "legal-move" for empty squares
+                if (legalTargets.some(t => t.r === r && t.f === f)) {
+                    const hasEnemy = board[r][f] && board[r][f].color !== turn;
+                    cell.classList.add(hasEnemy ? "legal-capture" : "legal-move");
+                }
+
                 const p = board[r][f];
                 if (p) {
                     const piece = document.createElement("span");
@@ -133,23 +153,54 @@
                     piece.textContent = PIECE_SYMBOLS[p.color][p.type];
                     cell.appendChild(piece);
                 }
+                
                 cell.onclick = () => {
-                    if (selected && legalTargets.some(t => t.r === r && t.f === f)) makeMove(selected, {r, f});
-                    else if (board[r][f] && board[r][f].color === turn) { selected = {r, f}; legalTargets = getMoves(r, f, board); render(); }
+                    if (gameOver || aiThinking || (aiEnabled && turn === "b")) return;
+                    if (selected && legalTargets.some(t => t.r === r && t.f === f)) {
+                        makeMove(selected, {r, f});
+                    } else if (board[r][f] && board[r][f].color === turn) { 
+                        selected = {r, f}; 
+                        legalTargets = getMoves(r, f, board); 
+                        render(); 
+                    } else {
+                        selected = null;
+                        legalTargets = [];
+                        render();
+                    }
                 };
                 container.appendChild(cell);
             }
         }
-        document.getElementById("node-w").classList.toggle("active-glow", turn === 'w');
-        document.getElementById("node-b").classList.toggle("active-glow", turn === 'b');
+        
+        // FIX #1: Re-applies turn indicator highlights dynamically
+        const nodeW = document.getElementById("node-w");
+        const nodeB = document.getElementById("node-b");
+        if (nodeW && nodeB) {
+            nodeW.classList.toggle("active-glow", turn === 'w');
+            nodeB.classList.toggle("active-glow", turn === 'b');
+        }
+
+        const overlay = document.getElementById("win-overlay");
+        const winTitle = document.getElementById("win-title");
+        if (overlay && winTitle) {
+            if (gameOver) {
+                winTitle.textContent = gameOverText;
+                overlay.classList.remove("hidden");
+            } else {
+                overlay.classList.add("hidden");
+            }
+        }
     }
 
     function init() {
         board = freshBoard();
-        document.getElementById("zoom-slider")?.addEventListener("input", (e) => { zoomPreset = e.target.value; render(); });
-        document.getElementById("btn-reset")?.addEventListener("click", () => { board = freshBoard(); render(); });
+        document.getElementById("zoom-slider")?.addEventListener("input", (e) => { zoomPreset = parseInt(e.target.value); render(); });
+        document.getElementById("btn-reset")?.addEventListener("click", () => { board = freshBoard(); turn = "w"; selected = null; legalTargets = []; gameOver = false; render(); });
+        document.getElementById("btn-another-match")?.addEventListener("click", () => { document.getElementById("btn-reset").click(); });
         document.getElementById("btn-zen")?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
-        document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; render(); });
+        document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; document.getElementById("btn-reset").click(); });
+        document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
+        document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value); });
         render();
     }
     document.addEventListener("DOMContentLoaded", init);
