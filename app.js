@@ -272,23 +272,49 @@
                 const t = terrain(r, f);
                 cellEl.className = `cell ${(r + f) % 2 === 0 ? "light" : "dark"} terrain-${t}`;
                 if (selected && selected.r === r && selected.f === f) cellEl.classList.add("selected");
-                
+                if (legalTargets.some(m => m.r === r && m.f === f)) cellEl.classList.add("legal-target");
+
                 const p = board[r][f];
                 if (p) {
                     const pieceEl = document.createElement("span");
-                    // Fix: Ensure we use the correct classes for contrast
                     pieceEl.className = `piece ${p.color === "w" ? "white" : "black"}`;
                     pieceEl.textContent = PIECE_SYMBOLS[p.color][p.type];
-                    pieceEl.draggable = !gameOver && (!aiEnabled || turn === "w");
-                    pieceEl.addEventListener("dragstart", (e) => { selected = {r, f}; e.dataTransfer.setData("text/plain", JSON.stringify({r, f})); });
+                    pieceEl.draggable = !gameOver && (!aiEnabled || turn === "w") && p.color === turn;
+                    pieceEl.addEventListener("dragstart", (e) => {
+                        selected = { r, f };
+                        legalTargets = getMoves(r, f, board);
+                        e.dataTransfer.setData("text/plain", JSON.stringify({ r, f }));
+                        e.dataTransfer.effectAllowed = "move";
+                    });
+                    pieceEl.addEventListener("dragend", () => { selected = null; legalTargets = []; render(); });
                     cellEl.appendChild(pieceEl);
                 }
+
+                // Drag-and-drop target handlers (previously missing — drops did nothing)
+                cellEl.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+                cellEl.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    let from;
+                    try { from = JSON.parse(e.dataTransfer.getData("text/plain")); } catch (err) { from = selected; }
+                    if (from) handleDrop(from, { r, f });
+                });
+
                 cellEl.addEventListener("click", () => handleSquareClick(r, f));
                 container.appendChild(cellEl);
             }
         });
         updateModalScreenState();
         syncTurnIndicators();
+        renderMoveLog();
+    }
+
+    function handleDrop(from, to) {
+        if (gameOver || aiThinking || (aiEnabled && turn === "b")) return;
+        const p = board[from.r] && board[from.r][from.f];
+        if (!p || p.color !== turn) return;
+        const moves = getMoves(from.r, from.f, board);
+        if (moves.some(m => m.r === to.r && m.f === to.f)) makeMove(from, to);
+        else { selected = null; legalTargets = []; render(); }
     }
 
     function renderLabels() {
@@ -309,7 +335,10 @@
     function updateModalScreenState() {
         const overlay = document.getElementById("win-overlay");
         if (overlay) overlay.classList.toggle("hidden", !gameOver);
-        if (gameOver) document.getElementById("win-title").textContent = gameOverText;
+        if (gameOver) {
+            const title = document.getElementById("win-title");
+            if (title) title.textContent = gameOverText;
+        }
     }
 
     function syncTurnIndicators() {
@@ -323,9 +352,14 @@
         document.getElementById("ai-thinking")?.classList.toggle("hidden", !v);
     }
 
+    // FIX: `element?.prop = value` is invalid JS syntax (SyntaxError: Invalid left-hand
+    // side in assignment). That single line was breaking the ENTIRE script — nothing on
+    // the page could work because the file failed to parse at all. Rewritten below.
     function updateUndoRedoButtons() {
-        document.getElementById("btn-undo")?.disabled = currentIndex <= 0;
-        document.getElementById("btn-redo")?.disabled = currentIndex >= history.length - 1;
+        const undoBtn = document.getElementById("btn-undo");
+        if (undoBtn) undoBtn.disabled = currentIndex <= 0;
+        const redoBtn = document.getElementById("btn-redo");
+        if (redoBtn) redoBtn.disabled = currentIndex >= history.length - 1;
     }
 
     function handleSquareClick(r, f) {
@@ -358,7 +392,7 @@
 
     function setupControlLayoutListeners() {
         document.getElementById("btn-reset")?.addEventListener("click", () => {
-            board = freshBoard(); turn = "w"; history = []; moveLog = []; saveState(); render();
+            board = freshBoard(); turn = "w"; history = []; moveLog = []; currentIndex = 0; saveState(); render();
         });
         document.getElementById("btn-another-match")?.addEventListener("click", () => document.getElementById("btn-reset").click());
         document.getElementById("btn-flip")?.addEventListener("click", () => { isFlipped = !isFlipped; render(); });
