@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geo-chess-v14';
+const CACHE_NAME = 'topos-chess-v15';
 const ASSETS = [
   './',
   './index.html',
