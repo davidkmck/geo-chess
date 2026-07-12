@@ -9,23 +9,23 @@ body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; }
 .active-glow { background: var(--accent-gold); box-shadow: 0 0 10px var(--accent-gold); }
 .vertical-slider { -webkit-appearance: slider-vertical; height: 150px; }
 
-/* Fix: Ensure container has explicit dimensions and is not collapsing */
+/* Fix the board container height */
 .board-outer {
-    width: 600px; 
+    width: 600px;
     height: 600px;
     position: relative;
-    overflow: hidden;
-    background: #000; /* Added to debug visibility */
+    background-color: #222; /* Fallback color */
 }
 
 .board {
-    display: grid !important; /* Forces grid layout */
+    display: grid !important;
     grid-template-columns: repeat(14, 1fr);
     grid-template-rows: repeat(14, 1fr);
-    width: 100%; 
+    width: 100%;
     height: 100%;
-    transform-origin: top left;
-    transition: transform 0.2s;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 .cell {
@@ -34,6 +34,8 @@ body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; }
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    border: 0.1px solid rgba(0,0,0,0.1);
 }
 .cell.light { background: var(--clr-light); }
 .cell.dark { background: var(--clr-dark); }
