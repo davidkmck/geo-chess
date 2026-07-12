@@ -243,10 +243,32 @@
         });
     }
 
-    function init() {
+function init() {
         board = freshBoard();
-        document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; document.getElementById("btn-reset").click(); });
-        document.getElementById("btn-reset").addEventListener("click", () => { board = freshBoard(); turn = "w"; history = []; moveLog = []; saveState(); render(); });
+        
+        // Terrain selector listener
+        document.getElementById("terrain-select")?.addEventListener("change", (e) => { 
+            currentTerrain = e.target.value; 
+            document.getElementById("btn-reset").click(); 
+        });
+
+        // Reset button listener
+        document.getElementById("btn-reset").addEventListener("click", () => { 
+            board = freshBoard(); 
+            turn = "w"; 
+            history = []; 
+            moveLog = []; 
+            gameOver = false; // Ensure game state is reset
+            gameOverText = "";
+            saveState(); 
+            render(); 
+        });
+
+        // "Play Again" button listener (The fix)
+        document.getElementById("btn-another-match")?.addEventListener("click", () => {
+            document.getElementById("btn-reset").click();
+        });
+
         render();
     }
     document.addEventListener("DOMContentLoaded", init);
