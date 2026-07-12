@@ -423,8 +423,9 @@ function makeMove(from, to) {
             vp.style.top = `${ratioY * (100 - pct)}%`;
         }
     }
-////
-function render() {
+//// ///
+
+    function render() {
         const container = document.getElementById("board");
         if (!container) return;
         container.innerHTML = "";
@@ -443,13 +444,13 @@ function render() {
                 if (t !== "plain") cellEl.classList.add(`terrain-${t}`);
                 if (isHomeRank(r)) cellEl.classList.add("home-rank");
 
-                // --- OPTION 1: The Royal Rectangle (2x2) ---
-                // Highlights Ranks 0,1 (Black) and 12,13 (White) on Files 6,7 (g, h)
-                const isRoyalRectangle = (r <= 1 || r >= SIZE - 2) && (f === 6 || f === 7);
-                if (isRoyalRectangle) {
-                    cellEl.classList.add("royal-home");
+                // --- PALACE HOME: Back-rank major pieces only ---
+                // Highlights Ranks 0 (Black) and 13 (White) strictly on Files 3 through 10
+                const isPalaceHome = (r === 0 || r === SIZE - 1) && (f >= 3 && f <= 10);
+                if (isPalaceHome) {
+                    cellEl.classList.add("palace-home");
                 }
-                // -------------------------------------------
+                // ------------------------------------------------
 
                 if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cellEl.classList.add("last-move-source");
                 if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cellEl.classList.add("last-move-target");
@@ -484,6 +485,7 @@ function render() {
         updateModalScreenState();
         syncTurnIndicators();
     }
+    //
 
     ///
 
