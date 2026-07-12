@@ -1,242 +1,26 @@
-:root {
-    --bg-main: #1a1a1a;
-    --bg-card: #242424;
-    --bg-board-edge: #111111;
-    --border-color: #333333;
-    --text-main: #e0e0e0;
-    --text-muted: #aaaaaa;
-    
-    --accent-gold: #ffc107;
-    --accent-gold-hover: #e0a800;
-    
-    /* Terrain Colors */
-    --clr-light: #e9edcc;
-    --clr-dark: #779556;
-    --clr-mountain: #666666;
-    --clr-forest: #2e5c1e;
-    --clr-river: #2a6f97;
-    --clr-lake: #1a4968;
-    --clr-ford: #8b5a2b; 
-}
+:root { --bg-main: #1a1a1a; --bg-card: #242424; --accent-gold: #ffc107; --clr-light: #e9edcc; --clr-dark: #779556; }
+body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; }
+.controls-header { display: flex; padding: 10px; background: var(--bg-card); }
+.game-layout { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+.board-container-wrapper { display: flex; gap: 20px; }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+.left-control-stack { display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 10px 0; }
+.turn-indicator-node { width: 20px; height: 20px; border-radius: 50%; background: #333; }
+.active-glow { background: var(--accent-gold); box-shadow: 0 0 10px var(--accent-gold); }
+.vertical-slider { -webkit-appearance: slider-vertical; height: 150px; }
 
-body {
-    background-color: var(--bg-main);
-    color: var(--text-main);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    line-height: 1.5;
-    overflow-x: hidden;
-    padding-bottom: 40px;
-}
+.board-outer { width: 600px; height: 600px; position: relative; overflow: hidden; }
+.board { display: grid; grid-template-columns: repeat(14, 1fr); width: 100%; height: 100%; transition: transform 0.2s; transform-origin: top left; }
+.cell { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; }
+.cell.light { background: var(--clr-light); }
+.cell.dark { background: var(--clr-dark); }
 
-/* ==========================================================================
-   1. Headers & Panels
-   ========================================================================== */
-.controls-header { display: flex; justify-content: space-between; align-items: center; background-color: var(--bg-card); padding: 6px 12px; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
-.header-left, .header-right { display: flex; align-items: center; gap: 10px; }
-.header-left h1 { font-size: 1.2rem; font-weight: 700; color: #fff; }
+.piece { font-size: 24px; cursor: grab; user-select: none; }
+.piece.white { color: #fff; text-shadow: 0 0 2px #000; }
+.piece.black { color: #000; text-shadow: 0 0 2px #fff; }
 
-.btn-ghost { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; }
-.btn-ghost:hover:not(:disabled) { background-color: #333; border-color: #555; }
-.btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.btn-primary { background-color: var(--accent-gold); color: #111; border: none; padding: 10px 20px; font-size: 15px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s ease; }
-.btn-primary:hover { background-color: var(--accent-gold-hover); }
-
-.game-layout { display: flex; flex-direction: column; align-items: center; max-width: 1300px; margin: 0 auto; padding: 12px; gap: 20px; }
-.board-container-wrapper { display: flex; flex-direction: row; align-items: center; justify-content: center; position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
-
-/*
-.left-control-stack { display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 300px; margin-right: 14px; z-index: 10; flex-shrink: 0; }
-*/
-.left-control-stack {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; /* Pushes items to the ends */
-    align-items: center;
-    height: 100%; /* Ensure the stack takes full height of the container */
-    padding: 10px 0;
-    box-sizing: border-box;
-}
-
-/* Ensure the indicators have a visible size and shape */
-.turn-indicator-node {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background-color: #333; /* Default dark */
-    transition: background-color 0.3s, box-shadow 0.3s;
-}
-
-.active-glow {
-    box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.8);
-    background-color: #ffc107; /* Your accent color */
-}
-
-
-.vertical-slider { -webkit-appearance: slider-vertical; writing-mode: bt-lr; width: 24px; height: 140px; padding: 0; margin: 8px 0; cursor: pointer; }
-
-/* ==========================================================================
-   2. Master Board Grid
-   ========================================================================== */
-.board-outer {
-    aspect-ratio: 1 / 1; /* Forces the container to be a square */
-    width: 100%;        /* Or whatever width you prefer */
-    max-width: 600px;   /* Prevents it from getting too huge on tablets */
-    margin: 0 auto;     /* Centers the board */
-    position: relative;
-}
-
-.board {
-    display: grid !important;
-    grid-template-columns: repeat(14, 1fr);
-    grid-template-rows: repeat(14, 1fr);
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100%; height: 100%;
-    margin: 0; padding: 0;
-    transform-origin: center;
-    transition: transform 0.15s ease-out;
-}
-
-.cell {
-    aspect-ratio: 1 / 1; /* Forces every cell to be a square */
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-}
-
-.cell.light { background-color: var(--clr-light); }
-.cell.dark { background-color: var(--clr-dark); }
-
-/* Solid Full-Square Terrains */
-.cell.terrain-mountain { background-color: var(--clr-mountain); }
-.cell.terrain-forest { background-color: var(--clr-forest); }
-.cell.terrain-river { background-color: var(--clr-river); }
-.cell.terrain-lake { background-color: var(--clr-lake); }
-.cell.terrain-ford { background-color: var(--clr-ford); border: 2px dashed rgba(255, 255, 255, 0.35); }
-
-/* ==========================================================================
-   3. Pieces & Highlights
-   ========================================================================== */
-.piece { font-size: 26px; z-index: 4; cursor: grab; transition: transform 0.1s ease; user-select: none; }
-.piece.white { color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 1px rgba(0,0,0,0.9); font-weight: bold; }
-.piece.black { color: #000000 !important; text-shadow: 0 1px 1px rgba(255,255,255,0.4), 0 0 1px rgba(255,255,255,0.2); font-weight: bold; }
-.piece:active { cursor: grabbing; }
-
-.cell.selected { box-shadow: inset 0 0 0 3px #ffeb3b; z-index: 5; }
-.cell.legal-move::after { content: ''; width: 28%; height: 28%; background-color: rgba(0, 0, 0, 0.3); border-radius: 50%; pointer-events: none; }
-.cell.legal-capture::after { content: ''; position: absolute; width: 84%; height: 84%; border: 3px solid rgba(217, 4, 41, 0.8); border-radius: 50%; pointer-events: none; }
-.cell.last-move-source { background-color: rgba(255, 235, 59, 0.35) !important; }
-.cell.last-move-target { background-color: rgba(255, 235, 59, 0.45) !important; }
-/* Special Palace Home Squares */
-.cell.palace-home {
-    /* A subtle light grey overlay */
-    background-color: rgba(200, 200, 200, 0.25); 
-    /* A very faint inset shadow for a slightly 'carved out' look */
-    box-shadow: inset 0 0 10px rgba(150, 150, 150, 0.3);
-    position: relative;
-}
-/* ==========================================================================
-   4. Zen Mode, Labels & Meta Dashboards
-   ========================================================================== */
-/* Hide the header background to isolate the Zen button */
-body.zen-active .controls-header { background-color: transparent; border-bottom: none; }
-
-/* Target specific buttons/panels to hide, leaving the required components visible */
-body.zen-active .controls-header h1,
-body.zen-active .controls-header #btn-reset,
-body.zen-active .controls-header #btn-flip,
-body.zen-active .header-right,
-body.zen-active .game-panels {
-    display: none !important;
-}
-
-.labels { position: absolute; display: grid; pointer-events: none; font-family: monospace; font-size: 9px; font-weight: bold; color: rgba(255,255,255,0.4); z-index: 10; }
-.ranks-labels { left: 4px; top: 0; height: 100%; grid-template-rows: repeat(14, 1fr); align-items: center; }
-.files-labels { bottom: 4px; left: 0; width: 100%; grid-template-columns: repeat(14, 1fr); justify-items: center; }
-
-.game-panels { display: flex; flex-direction: column; width: 100%; max-width: 600px; gap: 16px; }
-.panel-card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; }
-.panel-card h3 { font-size: 14px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 4px; }
-.log-scroll-frame { max-height: 120px; overflow-y: auto; border: 1px solid #1c1c1c; background-color: #181818; border-radius: 4px; }
-.move-log-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 4px; padding: 8px; list-style: none; }
-.move-log-list li { font-family: monospace; font-size: 12px; padding: 3px 6px; background-color: #222; border-radius: 3px; cursor: pointer; text-align: center; }
-.move-log-list li:hover { background-color: #2b2b2b; }
-.move-log-list li.active { background-color: rgba(255, 193, 7, 0.15); border: 1px solid var(--accent-gold); color: var(--accent-gold); }
-
-.legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; }
-.legend-item { display: flex; align-items: center; gap: 8px; }
-.key-patch { width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.15); }
-.key-patch.plain { background-color: var(--clr-light); }
-.key-patch.home { background-color: rgba(255,255,255,0.2); background-blend-mode: overlay; }
-.key-patch.mountain { background-color: var(--clr-mountain); }
-.key-patch.forest { background-color: var(--clr-forest); }
-.key-patch.river { background-color: var(--clr-river); }
-.key-patch.lake { background-color: var(--clr-lake); }
-.key-patch.ford { background-color: var(--clr-ford); border: 1px dashed rgba(255,255,255,0.35); }
+.mini-map { position: absolute; bottom: 10px; right: 10px; width: 100px; height: 100px; background: rgba(0,0,0,0.5); border: 1px solid #fff; }
+.mini-map-viewport { position: absolute; border: 1px solid red; }
 
 .hidden { display: none !important; }
-
-/* ==========================================================================
-   5. Victory Modal Overlay
-   ========================================================================== */
-#win-overlay {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.85); /* Darkens the board behind it */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000; /* Forces it to sit above all pieces and squares */
-}
-
-#win-overlay.hidden {
-    display: none !important;
-}
-
-.win-modal-content {
-    background: #2a2a2a;
-    padding: 2rem 3rem;
-    border-radius: 8px;
-    border: 2px solid #ffc107; /* Matches your gold accent */
-    text-align: center;
-    color: white;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-}
-
-#win-title {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    font-size: 1.8rem;
-    color: #ffc107;
-}
-
-.win-modal-content button {
-    background: #ffc107;
-    color: #111;
-    border: none;
-    padding: 10px 24px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.win-modal-content button:hover {
-    background: #e0a800;
-}
-
-/* Terrain Reset for None mode */
-.board.terrain-none .terrain-mountain,
-.board.terrain-none .terrain-forest,
-.board.terrain-none .terrain-lake,
-.board.terrain-none .terrain-river,
-.board.terrain-none .terrain-ford {
-    background-image: none !important;
-    background-color: transparent !important;
-}
+body.zen-active .game-panels, body.zen-active .controls-header h1 { display: none !important; }
