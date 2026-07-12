@@ -520,14 +520,18 @@ function renderMoveLog() {
         if (gameOver) { title.textContent = gameOverText; overlay.classList.remove("hidden"); } 
         else { overlay.classList.add("hidden"); }
     }
-
-    function syncTurnIndicators() {
-        const wNode = document.getElementById("node-w");
-        const bNode = document.getElementById("node-b");
-        if (!wNode || !bNode) return;
-        if (turn === "w") { wNode.classList.add("active-glow"); bNode.classList.remove("active-glow"); } 
-        else { bNode.classList.add("active-glow"); wNode.classList.remove("active-glow"); }
+function syncTurnIndicators() {
+    const wNode = document.getElementById("node-w");
+    const bNode = document.getElementById("node-b");
+    if (!wNode || !bNode) return;
+    if (turn === "w") { 
+        wNode.classList.add("active-glow"); 
+        bNode.classList.remove("active-glow"); 
+    } else { 
+        bNode.classList.add("active-glow"); 
+        wNode.classList.remove("active-glow"); 
     }
+}
 
     function setThinkingIndicatorVisibility(visible) {
         const ind = document.getElementById("ai-thinking");
