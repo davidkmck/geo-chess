@@ -12,9 +12,39 @@
     --terrain-ford: #7fb3d5;
 }
 
-body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; margin: 0; padding: 0; overflow: hidden; }
+* { box-sizing: border-box; }
 
-/* 1. Layout Fixes */
+body { 
+    background-color: var(--bg-main); 
+    color: #fff; 
+    font-family: sans-serif; 
+    margin: 0; 
+    padding: 0; 
+    overflow: hidden; 
+}
+
+.controls-header { 
+    display: flex; 
+    padding: 10px; 
+    background: var(--bg-card); 
+    align-items: center; 
+    justify-content: space-between; 
+}
+
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-left h1 { font-size: 18px; margin: 0; margin-right: 10px; }
+
+.btn-ghost {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ddd;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.btn-ghost:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+
 .game-layout {
     display: flex;
     flex-direction: column;
@@ -22,7 +52,6 @@ body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; m
     width: 100vw;
     height: 100vh;
     padding: 5px;
-    box-sizing: border-box;
 }
 
 .board-container-wrapper {
@@ -31,25 +60,28 @@ body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; m
     justify-content: center;
     align-items: center;
     width: 100%;
-    max-width: 600px;
-    gap: 10px;
-    margin-bottom: 20px;
+    flex: 1;
+    overflow: hidden;
+    gap: 5px;
 }
 
-/* Slimmer left stack */
 .left-control-stack {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
     width: 30px;
-    height: 75vw; /* Match the board size */
+    height: 70vw;
 }
 
-/* 2. Board Visibility Fixes */
+.turn-indicator-node { width: 16px; height: 16px; border-radius: 50%; background: #333; }
+.active-glow { background: var(--accent-gold); box-shadow: 0 0 10px var(--accent-gold); }
+.vertical-slider { -webkit-appearance: slider-vertical; height: 100px; }
+
+/* The Board - Optimized for square aspect ratio */
 .board-outer {
-    width: 75vw;    /* Reduced from 85vw to ensure fit */
-    height: 75vw;   
+    width: 80vw;
+    height: 80vw;
     max-width: 450px;
     max-height: 450px;
     position: relative;
@@ -64,35 +96,64 @@ body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; m
     width: 100%;
     height: 100%;
     position: absolute;
-    top: 0; left: 0;
+    top: 0;
+    left: 0;
     transform-origin: top left;
 }
 
-/* Prevents cell warping */
 .cell {
     width: 100%;
-    aspect-ratio: 1 / 1; 
+    aspect-ratio: 1 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-sizing: border-box;
+    position: relative;
 }
 
-/* 3. Indicators & Buttons */
-.turn-indicator-node { width: 16px; height: 16px; border-radius: 50%; background: #333; }
-.active-glow { background: var(--accent-gold); box-shadow: 0 0 8px var(--accent-gold); }
-.vertical-slider { -webkit-appearance: slider-vertical; height: 100px; }
+.cell.light { background: var(--clr-light); }
+.cell.dark { background: var(--clr-dark); }
 
-/* 4. Piece Contrast Fix */
+/* Terrain Overlays */
+.cell.terrain-mountain { background: var(--terrain-mountain); }
+.cell.terrain-forest { background: var(--terrain-forest); }
+.cell.terrain-lake { background: var(--terrain-lake); }
+.cell.terrain-river { background: var(--terrain-river); }
+.cell.terrain-ford { background: var(--terrain-ford); }
+
+/* Move Indicators - Fixed to be simple dots */
+.cell.legal-move::before {
+    content: "";
+    width: 20%;
+    height: 20%;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.cell.legal-capture::before {
+    content: "";
+    width: 80%;
+    height: 80%;
+    border: 3px solid rgba(217, 4, 41, 0.6);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.cell.selected { box-shadow: inset 0 0 0 3px var(--accent-gold); }
+
+/* Pieces */
 .piece { font-size: 20px; cursor: grab; user-select: none; z-index: 1; }
 .piece.white { color: #fff; text-shadow: 0 0 3px #000; }
 .piece.black { color: #000; text-shadow: 0 0 3px #fff; }
 
-/* 5. Utility & Zen */
+/* UI Overlays */
 .hidden { display: none !important; }
 body.zen-active .game-panels, 
 body.zen-active .controls-header #btn-reset, 
 body.zen-active .controls-header #btn-flip,
 body.zen-active .controls-header h1 { display: none !important; }
 
-/* ... (Keep your existing .panel-card, .btn, and terrain styles below) ... */
+.win-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex; align-items: center; justify-content: center; z-index: 10;
+}
+.win-modal-content { background: var(--bg-card); padding: 30px; border-radius: 10px; text-align: center; }
