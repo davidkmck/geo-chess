@@ -8,7 +8,10 @@
     const BACK_RANK_FILES = { 3: "R", 4: "N", 5: "B", 6: "Q", 7: "K", 8: "B", 9: "N", 10: "R" };
 
     let board = [], turn = "w", selected = null, legalTargets = [], gameOver = false, gameOverText = "", currentTerrain = 'default';
-    let zoomPreset = 1, panX = 0, panY = 0, isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
+    
+    // Camera Variables
+    let zoomPreset = 1, panX = 0, panY = 0, startMouseX = 0, startMouseY = 0, startPanX = 0, startPanY = 0, isPanning = false;
+    let isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
 
     const TERRAIN_PRESETS = {
         default: ["pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "ppMMFFpppppppp", "ppMMFFLLpppppp", "ppppppLLpppppp", "rrrfrrrppppppp", "pppppprrrrrrfr", "ppppppLLpppppp", "ppppppLLFFMMpp", "ppppppppFFMMpp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp"],
@@ -124,12 +127,63 @@
         }, 50);
     }
 
+    // Camera Application Engine
+    function applyCameraTransform() {
+        const boardEl = document.getElementById("board");
+        if (!boardEl) return;
+        const scales = [1, 1.75, 3.5];
+        boardEl.style.transform = `scale(${scales[zoomPreset - 1]}) translate(${panX}px, ${panY}px)`;
+    }
+
+    function setupPanning() {
+        const outer = document.getElementById("board-outer");
+        if (!outer) return;
+
+        outer.addEventListener("pointerdown", (e) => {
+            if (zoomPreset === 1) return; // Prevent panning when fully zoomed out
+            isPanning = true;
+            startMouseX = e.clientX;
+            startMouseY = e.clientY;
+            startPanX = panX;
+            startPanY = panY;
+            outer.setPointerCapture(e.pointerId);
+        });
+
+        outer.addEventListener("pointermove", (e) => {
+            if (!isPanning) return;
+            const scales = [1, 1.75, 3.5];
+            const scaleFactor = scales[zoomPreset - 1] || 1.0;
+
+            panX = startPanX + (e.clientX - startMouseX) / scaleFactor;
+            panY = startPanY + (e.clientY - startMouseY) / scaleFactor;
+
+            // Strict bounds clamping so board doesn't detach from viewport
+            const w = outer.offsetWidth;
+            const h = outer.offsetHeight;
+            const maxTranslateX = (w * scaleFactor - w) / scaleFactor;
+            const maxTranslateY = (h * scaleFactor - h) / scaleFactor;
+
+            panX = Math.min(0, Math.max(-maxTranslateX, panX));
+            panY = Math.min(0, Math.max(-maxTranslateY, panY));
+
+            applyCameraTransform();
+        });
+
+        outer.addEventListener("pointerup", (e) => {
+            isPanning = false;
+            outer.releasePointerCapture(e.pointerId);
+        });
+
+        outer.addEventListener("pointercancel", () => {
+            isPanning = false;
+        });
+    }
+
     function render() {
         const container = document.getElementById("board");
         if (!container) return;
         container.innerHTML = "";
-        const scales = [1, 1.75, 3.5];
-        container.style.transform = `scale(${scales[zoomPreset - 1]}) translate(${panX}px, ${panY}px)`;
+        applyCameraTransform();
         
         for (let r = 0; r < SIZE; r++) {
             for (let f = 0; f < SIZE; f++) {
@@ -140,7 +194,6 @@
                     cell.classList.add("selected");
                 }
                 
-                // FIX #3: Applies "legal-capture" for pieces, "legal-move" for empty squares
                 if (legalTargets.some(t => t.r === r && t.f === f)) {
                     const hasEnemy = board[r][f] && board[r][f].color !== turn;
                     cell.classList.add(hasEnemy ? "legal-capture" : "legal-move");
@@ -172,7 +225,6 @@
             }
         }
         
-        // FIX #1: Re-applies turn indicator highlights dynamically
         const nodeW = document.getElementById("node-w");
         const nodeB = document.getElementById("node-b");
         if (nodeW && nodeB) {
@@ -194,14 +246,23 @@
 
     function init() {
         board = freshBoard();
-        document.getElementById("zoom-slider")?.addEventListener("input", (e) => { zoomPreset = parseInt(e.target.value); render(); });
+        setupPanning();
+        
+        document.getElementById("zoom-slider")?.addEventListener("input", (e) => { 
+            zoomPreset = parseInt(e.target.value); 
+            // Reset coordinates on zoom jump
+            panX = 0; panY = 0; 
+            render(); 
+        });
         document.getElementById("btn-reset")?.addEventListener("click", () => { board = freshBoard(); turn = "w"; selected = null; legalTargets = []; gameOver = false; render(); });
         document.getElementById("btn-another-match")?.addEventListener("click", () => { document.getElementById("btn-reset").click(); });
         document.getElementById("btn-zen")?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
         document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; document.getElementById("btn-reset").click(); });
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
         document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value); });
+        
         render();
     }
+    
     document.addEventListener("DOMContentLoaded", init);
 })();
