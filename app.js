@@ -243,43 +243,48 @@
     // ==========================================================================
     // 5. Executive Execution & Turn Orchestration
     // ==========================================================================
-/////
+///// ////
 function makeMove(from, to) {
-        const p = board[from.r][from.f];
-        const captured = board[to.r][to.f];
-        
-        const moveNotation = `${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`;
-        moveLog.push(moveNotation);
+    const p = board[from.r][from.f];
+    const captured = board[to.r][to.f];
+    
+    const moveNotation = `${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`;
+    moveLog.push(moveNotation);
 
-        board[to.r][to.f] = { ...p, moved: true };
-        board[from.r][from.f] = null;
+    board[to.r][to.f] = { ...p, moved: true };
+    board[from.r][from.f] = null;
 
-        lastMoveSource = { ...from };
-        lastMoveTarget = { ...to };
+    lastMoveSource = { ...from };
+    lastMoveTarget = { ...to };
 
-        if (captured && captured.type === "K") {
-            gameOver = true;
-            gameOverText = p.color === "w" ? "White Wins by Regicide!" : "Black Wins by Regicide!";
-        }
-
-        turn = turn === "w" ? "b" : "w";
-        selected = null;
-        legalTargets = [];
-
-// Check if the move resulted in checkmate
-    const opponentColor = turn === "w" ? "b" : "w";
-    if (isCheckmate(opponentColor, board)) {
+    // 1. Immediate Win: Regicide
+    if (captured && captured.type === "K") {
         gameOver = true;
-        gameOverText = turn === "w" ? "White Wins by Checkmate!" : "Black Wins by Checkmate!";
+        gameOverText = p.color === "w" ? "White Wins by Regicide!" : "Black Wins by Regicide!";
+    }
+
+    // 2. Identify the opponent before flipping the turn
+    const opponentColor = turn === "w" ? "b" : "w";
+    const activeColor = turn;
+
+    // 3. Flip turn
+    turn = opponentColor;
+    selected = null;
+    legalTargets = [];
+
+    // 4. Check for checkmate on the opponent
+    if (!gameOver && isCheckmate(opponentColor, board)) {
+        gameOver = true;
+        gameOverText = activeColor === "w" ? "White Wins by Checkmate!" : "Black Wins by Checkmate!";
     }
     
-        saveState();
-        render();
+    saveState();
+    render();
 
-        if (!gameOver && aiEnabled && turn === "b") {
-            triggerAIAsyncExecution();
-        }
+    if (!gameOver && aiEnabled && turn === "b") {
+        triggerAIAsyncExecution();
     }
+}
 
     ////
   
