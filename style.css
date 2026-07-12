@@ -132,9 +132,9 @@ body {
 .cell.legal-capture::after { content: ''; position: absolute; width: 84%; height: 84%; border: 3px solid rgba(217, 4, 41, 0.8); border-radius: 50%; pointer-events: none; }
 .cell.last-move-source { background-color: rgba(255, 235, 59, 0.35) !important; }
 .cell.last-move-target { background-color: rgba(255, 235, 59, 0.45) !important; }
-
 .cell.royal-home {
-    box-shadow: inset 0 0 15px rgba(255, 193, 7, 0.4);
+    box-shadow: inset 0 0 20px 5px rgba(255, 193, 7, 0.8) !important;
+    border: 2px solid #ffc107;
     position: relative;
 }
 
