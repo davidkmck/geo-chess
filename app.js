@@ -423,8 +423,8 @@ function makeMove(from, to) {
             vp.style.top = `${ratioY * (100 - pct)}%`;
         }
     }
-
-   function render() {
+////
+function render() {
         const container = document.getElementById("board");
         if (!container) return;
         container.innerHTML = "";
@@ -443,13 +443,13 @@ function makeMove(from, to) {
                 if (t !== "plain") cellEl.classList.add(`terrain-${t}`);
                 if (isHomeRank(r)) cellEl.classList.add("home-rank");
 
-                // --- NEW BLOCK: Royal Home Squares ---
-                // Highlights the starting squares for the King and Queen (Files 6 and 7)
-                const isRoyalHome = (r === 0 || r === SIZE - 1) && (f === 6 || f === 7);
-                if (isRoyalHome) {
+                // --- OPTION 1: The Royal Rectangle (2x2) ---
+                // Highlights Ranks 0,1 (Black) and 12,13 (White) on Files 6,7 (g, h)
+                const isRoyalRectangle = (r <= 1 || r >= SIZE - 2) && (f === 6 || f === 7);
+                if (isRoyalRectangle) {
                     cellEl.classList.add("royal-home");
                 }
-                // -------------------------------------
+                // -------------------------------------------
 
                 if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cellEl.classList.add("last-move-source");
                 if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cellEl.classList.add("last-move-target");
@@ -484,6 +484,9 @@ function makeMove(from, to) {
         updateModalScreenState();
         syncTurnIndicators();
     }
+
+    ///
+
     
     function renderLabels() {
         const ranksContainer = document.getElementById("ranks-labels");
