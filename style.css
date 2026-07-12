@@ -142,8 +142,6 @@ body { background-color: var(--bg-main); color: #fff; font-family: sans-serif; }
 .piece.white { color: #fff; text-shadow: 0 0 2px #000; }
 .piece.black { color: #000; text-shadow: 0 0 2px #fff; }
 
-.mini-map { position: absolute; bottom: 10px; right: 10px; width: 100px; height: 100px; background: rgba(0,0,0,0.5); border: 1px solid #fff; }
-.mini-map-viewport { position: absolute; top: 0; left: 0; border: 1px solid red; }
 
 .hidden { display: none !important; }
 body.zen-active .game-panels, body.zen-active .controls-header h1 { display: none !important; }
