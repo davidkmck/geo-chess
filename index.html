@@ -15,7 +15,6 @@
             <button id="btn-flip" class="btn-ghost">🔁 Flip</button>
         </div>
     </header>
-
     <main class="game-layout">
         <div class="board-container-wrapper">
             <div class="left-control-stack">
@@ -23,7 +22,6 @@
                 <input type="range" id="zoom-slider" class="vertical-slider" min="1" max="3" step="1" value="1">
                 <div id="node-w" class="turn-indicator-node active-glow" title="White's Turn"></div>
             </div>
-
             <div class="board-outer" id="board-outer">
                 <div class="board" id="board"></div>
                 <div id="mini-map" class="mini-map"><div id="mini-viewport" class="mini-map-viewport"></div></div>
@@ -35,7 +33,6 @@
                 </div>
             </div>
         </div>
-
         <div class="game-panels">
             <section class="panel-card">
                 <h3>Match Configuration</h3>
@@ -49,6 +46,15 @@
                 </div>
                 <div class="control-group">
                     <label><input type="checkbox" id="ai-toggle" checked> Enable AI</label>
+                </div>
+                <div class="control-group">
+                    <label for="ai-depth-select">AI Difficulty:</label>
+                    <select id="ai-depth-select">
+                        <option value="1">Easy</option>
+                        <option value="2" selected>Medium</option>
+                        <option value="3">Hard</option>
+                        <option value="4">Expert (slower)</option>
+                    </select>
                 </div>
             </section>
         </div>
