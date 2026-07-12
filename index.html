@@ -2,20 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Prevents mobile browsers from automatically shrinking the 14x14 grid layout -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <title>Topos Chess - Strategy with Terrain</title>
-    
-    <!-- Connects your manifest so the app becomes installable on homescreens -->
     <link rel="manifest" href="manifest.json">
-    
     <link rel="stylesheet" href="style.css">
 </head>
-
-    <!-- ==========================================================================
-       1. Controls Header Navbar
-       ========================================================================== -->
+<body>
     <header class="controls-header">
         <div class="header-left">
             <h1>Topos Chess</h1>
@@ -29,37 +21,21 @@
         </div>
     </header>
 
-    <!-- ==========================================================================
-       2. Central Arena Grid Layout
-       ========================================================================== -->
     <main class="game-layout">
-        
         <div class="board-container-wrapper">
-            <!-- Left Sidebar Widget Control Stack -->
             <div class="left-control-stack">
                 <div id="node-b" class="turn-indicator-node black-node" title="Black's Turn Indicator"></div>
-                
-                <!-- 3-State Discrete Zoom Slider preset layout configuration -->
                 <input type="range" id="zoom-slider" class="vertical-slider" min="1" max="3" step="1" value="1" title="Zoom Preset: 1=14x14, 2=8x8, 3=4x4">
-                
                 <div id="node-w" class="turn-indicator-node white-node active-glow" title="White's Turn Indicator"></div>
             </div>
 
-            <!-- Rigid Viewport Outer Bounding Box -->
             <div class="board-outer" id="board-outer">
-                <!-- Master Typographic Labels Layers -->
                 <div class="labels ranks-labels" id="ranks-labels"></div>
                 <div class="labels files-labels" id="files-labels"></div>
-                
-                <!-- Dynamic Transform Board Engine Matrix -->
                 <div class="board" id="board"></div>
-
-                <!-- Navigation Radar Minimap Mode -->
                 <div id="mini-map" class="mini-map">
                     <div id="mini-viewport" class="mini-map-viewport"></div>
                 </div>
-
-                <!-- Game HUD Notification Screen Overlays -->
                 <div id="win-overlay" class="win-overlay hidden">
                     <div class="win-modal">
                         <h2 id="win-title">White Wins!</h2>
@@ -69,17 +45,20 @@
             </div>
         </div>
 
-        <!-- ==========================================================================
-           3. Meta Dashboards & Panels Architecture
-           ========================================================================== -->
         <div class="game-panels">
-            <!-- Match Settings Configuration Sidebar -->
             <section class="panel-card">
                 <h3>Match Configuration</h3>
                 <div class="control-group">
+                    <label for="terrain-select">Map Terrain:</label>
+                    <select id="terrain-select" class="select-clean">
+                        <option value="default">Default</option>
+                        <option value="alternative">Alternative Arrangement</option>
+                        <option value="none">None (Classic)</option>
+                    </select>
+                </div>
+                <div class="control-group">
                     <label class="switch-label">
-                        <input type="checkbox" id="ai-toggle" checked> <!-- DEFAULT: Checked -->
-                        Enable AI Opponent (Black)
+                        <input type="checkbox" id="ai-toggle" checked> Enable AI Opponent (Black)
                     </label>
                 </div>
                 <div class="control-group">
@@ -96,7 +75,6 @@
                 </div>
             </section>
 
-            <!-- Notation Timeline History Log Box -->
             <section class="panel-card">
                 <h3>Move History Timeline</h3>
                 <div class="log-scroll-frame">
@@ -104,23 +82,20 @@
                 </div>
             </section>
 
-            <!-- Environmental Biome Key Legend -->
             <section class="panel-card">
                 <h3>Terrain Tactical Index</h3>
                 <div class="legend-grid">
-                    <div class="legend-item"><div class="key-patch plain"></div> <span>Plain (Standard Movement Rules)</span></div>
-                    <div class="legend-item"><div class="key-patch home"></div> <span>Deployment Sanctuary (Home Ranks)</span></div>
-                    <div class="legend-item"><div class="key-patch mountain"></div> <span>Mountain Range (Impassable Wall)</span></div>
-                    <div class="legend-item"><div class="key-patch forest"></div> <span>Dense Woods (Impassable Blockade)</span></div>
-                    <div class="legend-item"><div class="key-patch river"></div> <span>Deep River (Halts Sliders; No Water Combat)</span></div>
-                    <div class="legend-item"><div class="key-patch lake"></div> <span>Lake Center (Halts Sliders; No Water Combat)</span></div>
-                    <div class="legend-item"><div class="key-patch ford"></div> <span>Shallow Ford (Bridges: Full Standard Access)</span></div>
+                    <div class="legend-item"><div class="key-patch plain"></div> <span>Plain</span></div>
+                    <div class="legend-item"><div class="key-patch home"></div> <span>Sanctuary</span></div>
+                    <div class="legend-item"><div class="key-patch mountain"></div> <span>Mountain</span></div>
+                    <div class="legend-item"><div class="key-patch forest"></div> <span>Forest</span></div>
+                    <div class="legend-item"><div class="key-patch river"></div> <span>River</span></div>
+                    <div class="legend-item"><div class="key-patch lake"></div> <span>Lake</span></div>
+                    <div class="legend-item"><div class="key-patch ford"></div> <span>Ford</span></div>
                 </div>
             </section>
         </div>
     </main>
-
     <script src="app.js"></script>
-    </body> </html>
 </body>
 </html>
