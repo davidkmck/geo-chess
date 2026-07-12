@@ -5,7 +5,7 @@
     // 1. Core Config & Global State Matrix
     // ==========================================================================
     const SIZE = 14;
-    const FILES = "abcdefghijklmn".split("");c
+    const FILES = "abcdefghijklmn".split("");
 
     let board = [];
     let turn = "w";
@@ -266,6 +266,13 @@ function makeMove(from, to) {
         selected = null;
         legalTargets = [];
 
+// Check if the move resulted in checkmate
+    const opponentColor = turn === "w" ? "b" : "w";
+    if (isCheckmate(opponentColor, board)) {
+        gameOver = true;
+        gameOverText = turn === "w" ? "White Wins by Checkmate!" : "Black Wins by Checkmate!";
+    }
+    
         saveState();
         render();
 
@@ -664,7 +671,47 @@ function copyMoveHistory() {
         console.error('Failed to copy: ', err);
     })
 }
-    
+
+   function isCheckmate(color, bMatrix) {
+    // 1. Find the King's position
+    let kingPos = null;
+    for (let r = 0; r < SIZE; r++) {
+        for (let f = 0; f < SIZE; f++) {
+            const p = bMatrix[r][f];
+            if (p && p.type === "K" && p.color === color) {
+                kingPos = { r, f };
+                break;
+            }
+        }
+    }
+
+    // 2. Is the King currently attacked?
+    if (!isSquareAttacked(kingPos.r, kingPos.f, color, bMatrix)) return false;
+
+    // 3. Can any piece make a move that removes the check?
+    const allMoves = generateAllLegalMoves(color, bMatrix);
+    for (const move of allMoves) {
+        const nextBoard = cloneBoard(bMatrix);
+        // Simulate move
+        nextBoard[move.to.r][move.to.f] = { ...nextBoard[move.from.r][move.from.f], moved: true };
+        nextBoard[move.from.r][move.from.f] = null;
+        
+        // Find king in new board
+        let nextKingPos = null;
+        for (let r = 0; r < SIZE; r++) {
+            for (let f = 0; f < SIZE; f++) {
+                if (nextBoard[r][f] && nextBoard[r][f].type === "K" && nextBoard[r][f].color === color) {
+                    nextKingPos = { r, f };
+                }
+            }
+        }
+        
+        if (!isSquareAttacked(nextKingPos.r, nextKingPos.f, color, nextBoard)) {
+            return false; // Found a move that escapes check
+        }
+    }
+    return true; // No moves escape check
+} 
 
     ///   init
     
