@@ -217,12 +217,13 @@
         if (aiEnabled && turn === "b" && !gameOver) triggerAI();
     }
 
-    function triggerAI() {
+function triggerAI() {
         if (gameOver) return;
         aiThinking = true;
         setTimeout(() => {
             if (typeof AI !== 'undefined') {
-                const res = AI.minimax(board, aiDepth, -Infinity, Infinity, false, PIECE_VALUES, generateAllLegalMoves, cloneBoard);
+                // FIXED: We are now passing isSquareAttacked to the AI engine
+                const res = AI.minimax(board, aiDepth, -Infinity, Infinity, false, PIECE_VALUES, generateAllLegalMoves, cloneBoard, isSquareAttacked);
                 aiThinking = false;
                 if (res && res.move) makeMove(res.move.from, res.move.to);
             }
