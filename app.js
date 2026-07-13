@@ -8,7 +8,11 @@
     const BACK_RANK_FILES = { 3: "R", 4: "N", 5: "B", 6: "Q", 7: "K", 8: "B", 9: "N", 10: "R" };
 
     let board = [], turn = "w", selected = null, legalTargets = [], gameOver = false, gameOverText = "", currentTerrain = 'default';
+    let lastMoveSource = null, lastMoveTarget = null;
     
+    // History & Move Log Variables
+    let history = [], moveLog = [], currentIndex = 0;
+
     // Camera Variables
     let zoomPreset = 1, panX = 0, panY = 0, startMouseX = 0, startMouseY = 0, startPanX = 0, startPanY = 0, isPanning = false;
     let isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
@@ -38,15 +42,48 @@
     function freshBoard() {
         const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
         for (let f = 0; f < SIZE; f++) {
-            if (BACK_RANK_FILES[f]) b[0][f] = { type: BACK_RANK_FILES[f], color: "b" };
-            b[1][f] = { type: "P", color: "b" };
-            b[SIZE - 2][f] = { type: "P", color: "w" };
-            if (BACK_RANK_FILES[f]) b[SIZE - 1][f] = { type: BACK_RANK_FILES[f], color: "w" };
+            if (BACK_RANK_FILES[f]) b[0][f] = { type: BACK_RANK_FILES[f], color: "b", moved: false };
+            b[1][f] = { type: "P", color: "b", moved: false };
+            b[SIZE - 2][f] = { type: "P", color: "w", moved: false };
+            if (BACK_RANK_FILES[f]) b[SIZE - 1][f] = { type: BACK_RANK_FILES[f], color: "w", moved: false };
         }
         return b;
     }
 
     function cloneBoard(src) { return src.map(row => row.map(cell => cell ? { ...cell } : null)); }
+
+    // History Management
+    function saveState() {
+        history = history.slice(0, currentIndex + 1);
+        moveLog = moveLog.slice(0, currentIndex);
+        history.push({
+            board: cloneBoard(board), turn: turn, gameOver: gameOver, gameOverText: gameOverText,
+            lastMoveSource: lastMoveSource ? { ...lastMoveSource } : null,
+            lastMoveTarget: lastMoveTarget ? { ...lastMoveTarget } : null
+        });
+        currentIndex = history.length - 1;
+        updateUndoRedoButtons();
+    }
+
+    function jumpToTimelineIndex(idx) {
+        if (idx < 0 || idx >= history.length) return;
+        currentIndex = idx;
+        const stateData = history[currentIndex];
+        board = cloneBoard(stateData.board);
+        turn = stateData.turn; gameOver = stateData.gameOver; gameOverText = stateData.gameOverText;
+        lastMoveSource = stateData.lastMoveSource ? { ...stateData.lastMoveSource } : null;
+        lastMoveTarget = stateData.lastMoveTarget ? { ...stateData.lastMoveTarget } : null;
+        selected = null; legalTargets = [];
+        updateUndoRedoButtons(); render();
+        if (!gameOver && aiEnabled && turn === "b") triggerAI();
+    }
+
+    function updateUndoRedoButtons() {
+        const btnUndo = document.getElementById("btn-undo");
+        const btnRedo = document.getElementById("btn-redo");
+        if (btnUndo) btnUndo.disabled = currentIndex <= 0;
+        if (btnRedo) btnRedo.disabled = currentIndex >= history.length - 1;
+    }
 
     function getMoves(r, f, bMatrix) {
         const p = bMatrix[r][f];
@@ -97,7 +134,6 @@
         return list;
     }
 
-    // RESTORED: Threat detection
     function isSquareAttacked(r, f, color, bMatrix) {
         const enemyColor = color === "w" ? "b" : "w";
         for (let row = 0; row < SIZE; row++) {
@@ -112,7 +148,6 @@
         return false;
     }
 
-    // RESTORED: Checkmate logic
     function isCheckmate(color, bMatrix) {
         let kingPos = null;
         for (let r = 0; r < SIZE; r++) {
@@ -152,27 +187,32 @@
     function makeMove(from, to) {
         const p = board[from.r][from.f];
         const captured = board[to.r][to.f];
+        
+        // Log Move
+        moveLog.push(`${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`);
+
         board[to.r][to.f] = { ...p, moved: true };
         board[from.r][from.f] = null;
         
-        // 1. Check Regicide
+        lastMoveSource = { ...from };
+        lastMoveTarget = { ...to };
+        
         if (captured && captured.type === "K") {
             gameOver = true;
-            gameOverText = p.color === "w" ? "White Wins!" : "Black Wins!";
+            gameOverText = p.color === "w" ? "White Wins by Regicide!" : "Black Wins by Regicide!";
+            saveState();
             render();
             return;
         }
 
         turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
         
-        // 2. Check Checkmate (RESTORED)
         if (isCheckmate(turn, board)) {
             gameOver = true;
             gameOverText = turn === "w" ? "Black Wins by Checkmate!" : "White Wins by Checkmate!";
-            render();
-            return;
         }
 
+        saveState();
         render();
         if (aiEnabled && turn === "b" && !gameOver) triggerAI();
     }
@@ -202,7 +242,7 @@
         if (!outer) return;
 
         outer.addEventListener("pointerdown", (e) => {
-            if (zoomPreset === 1) return; // Prevent panning when fully zoomed out
+            if (zoomPreset === 1) return;
             isPanning = true;
             startMouseX = e.clientX;
             startMouseY = e.clientY;
@@ -240,6 +280,35 @@
         });
     }
 
+    // UI Renderers
+    function renderMoveLog() {
+        const listEl = document.getElementById("move-log-list");
+        if (!listEl) return;
+        
+        let copyBtn = document.getElementById("copy-history-btn");
+        if (!copyBtn) {
+            copyBtn = document.createElement("button");
+            copyBtn.id = "copy-history-btn";
+            copyBtn.className = "btn-ghost"; // Added your UI class
+            copyBtn.textContent = "📋 Copy History";
+            copyBtn.addEventListener("click", () => {
+                const historyText = moveLog.map((move, idx) => `${idx + 1}. ${move}`).join('\n');
+                navigator.clipboard.writeText(historyText).catch(err => console.error('Failed to copy: ', err));
+            });
+            listEl.parentNode.insertBefore(copyBtn, listEl); 
+        }
+
+        listEl.innerHTML = "";
+        moveLog.forEach((move, idx) => {
+            const li = document.createElement("li");
+            li.textContent = `${idx + 1}. ${move}`;
+            li.style.cursor = "pointer";
+            if (idx === currentIndex - 1) li.style.fontWeight = "bold"; // Active highlight
+            li.addEventListener("click", () => jumpToTimelineIndex(idx + 1));
+            listEl.appendChild(li);
+        });
+    }
+
     function render() {
         const container = document.getElementById("board");
         if (!container) return;
@@ -251,6 +320,10 @@
                 const cell = document.createElement("div");
                 cell.className = `cell ${(r + f) % 2 === 0 ? 'light' : 'dark'} terrain-${terrain(r, f)}`;
                 
+                // Highlight last move targets
+                if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cell.classList.add("last-move-source");
+                if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cell.classList.add("last-move-target");
+
                 if (selected && selected.r === r && selected.f === f) {
                     cell.classList.add("selected");
                 }
@@ -303,6 +376,8 @@
                 overlay.classList.add("hidden");
             }
         }
+
+        renderMoveLog();
     }
 
     function init() {
@@ -314,13 +389,21 @@
             panX = 0; panY = 0; 
             render(); 
         });
-        document.getElementById("btn-reset")?.addEventListener("click", () => { board = freshBoard(); turn = "w"; selected = null; legalTargets = []; gameOver = false; render(); });
+        document.getElementById("btn-reset")?.addEventListener("click", () => { 
+            board = freshBoard(); turn = "w"; selected = null; legalTargets = []; gameOver = false;
+            lastMoveSource = null; lastMoveTarget = null; history = []; moveLog = [];
+            saveState(); render(); 
+        });
+        document.getElementById("btn-undo")?.addEventListener("click", () => { if (currentIndex > 0) jumpToTimelineIndex(currentIndex - 1); });
+        document.getElementById("btn-redo")?.addEventListener("click", () => { if (currentIndex < history.length - 1) jumpToTimelineIndex(currentIndex + 1); });
+        
         document.getElementById("btn-another-match")?.addEventListener("click", () => { document.getElementById("btn-reset").click(); });
         document.getElementById("btn-zen")?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
         document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; document.getElementById("btn-reset").click(); });
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
         document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value); });
         
+        saveState();
         render();
     }
     
