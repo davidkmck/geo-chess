@@ -35,7 +35,10 @@
                 </div>
             </div>
         </div>
-        <div class="game-panels">
+
+        ///
+
+<div class="game-panels">
             <section class="panel-card">
                 <h3>Match Configuration</h3>
                 <div class="control-group">
@@ -59,9 +62,20 @@
                     </select>
                 </div>
             </section>
+
+            <section class="panel-card">
+                <h3>Move History</h3>
+                <div class="control-group" style="margin-bottom: 15px;">
+                    <button id="btn-undo" class="btn-ghost" disabled>↩️ Undo</button>
+                    <button id="btn-redo" class="btn-ghost" disabled>↪️ Redo</button>
+                </div>
+                <ul id="move-log-list" style="list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; font-family: monospace; color: #ccc; line-height: 1.6;"></ul>
+            </section>
         </div>
     </main>
-    <script src="app.js"></script>
+    
     <script src="ai.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
+    
