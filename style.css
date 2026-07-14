@@ -168,7 +168,8 @@ body {
 }
 
 /* 8x8 Core Guide Overlay (Pure CSS approach) */
-body.show-core-guide .board::after {
+/* This listens directly to the HTML checkbox state without needing app.js! */
+body:has(#inner-board-toggle:checked) .board::after {
     content: "";
     position: absolute;
     /* 3 squares in from the left and top out of 14 total */
@@ -183,6 +184,8 @@ body.show-core-guide .board::after {
     pointer-events: none; /* Lets clicks pass through to the board */
     z-index: 10;
 }
+
+
 
 /* UI Overlays */
 .hidden { display: none !important; }
