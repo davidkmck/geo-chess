@@ -147,28 +147,26 @@ body {
 
 /* Pieces */
 .piece { 
-    font-size: 26px; /* Slightly larger for readability */
+    font-size: 28px; 
     cursor: grab; 
     user-select: none; 
     z-index: 3; 
-    /* Force standard text rendering instead of emojis */
-    font-family: "Segoe UI Symbol", "Apple Symbols", sans-serif; 
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; 
 }
 
 .piece.white { 
-    color: #fff !important; 
-    -webkit-text-stroke: 1.5px #000; /* Heavy black outline for light squares */
-    text-shadow: 0 4px 4px rgba(0, 0, 0, 0.5); 
+    color: #ffffff !important; 
+    /* Just a clean, simple drop shadow to separate it from the board */
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8); 
 }
 
 .piece.black { 
-    color: #000 !important; 
-    -webkit-text-stroke: 1px #fff; /* White outline for dark squares */
-    text-shadow: 0 4px 4px rgba(255, 255, 255, 0.3); 
+    color: #000000 !important; 
+    /* Soft light shadow so black pieces don't get lost on dark squares */
+    text-shadow: 0 2px 4px rgba(255, 255, 255, 0.4); 
 }
 
 /* 8x8 Core Guide Overlay (Pure CSS approach) */
-/* This listens directly to the HTML checkbox state without needing app.js! */
 body:has(#inner-board-toggle:checked) .board::after {
     content: "";
     position: absolute;
@@ -179,12 +177,12 @@ body:has(#inner-board-toggle:checked) .board::after {
     width: calc(100% * 8 / 14);
     height: calc(100% * 8 / 14);
     
-    border: 4px dashed rgba(255, 215, 0, 0.9); /* Bright Gold */
+    /* Finer, darker dashed line */
+    border: 2px dashed rgba(0, 0, 0, 0.6); 
     box-sizing: border-box;
     pointer-events: none; /* Lets clicks pass through to the board */
     z-index: 10;
 }
-
 
 
 /* UI Overlays */
