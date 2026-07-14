@@ -125,9 +125,26 @@ body {
 /* Move Indicators */
 .cell.legal-move::before {
     content: "";
-    position: absolute
+    position: absolute;
+    width: 25%;
+    height: 25%;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 2;
+}
+.cell.legal-capture::before {
+    content: "";
+    position: absolute;
+    width: 80%;
+    height: 80%;
+    border: 4px solid rgba(217, 4, 41, 0.8);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 2;
+}
+.cell.selected { box-shadow: inset 0 0 0 3px var(--accent-gold); z-index: 2; }
 
-    
 /* Pieces */
 .piece { 
     font-size: 26px; /* Slightly larger for readability */
@@ -166,3 +183,18 @@ body.show-core-guide .board::after {
     pointer-events: none; /* Lets clicks pass through to the board */
     z-index: 10;
 }
+
+/* UI Overlays */
+.hidden { display: none !important; }
+body.zen-active .game-panels, 
+body.zen-active .controls-header #btn-reset, 
+body.zen-active .controls-header #btn-flip,
+body.zen-active .controls-header h1 { display: none !important; }
+
+.win-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex; align-items: center; justify-content: center; z-index: 10;
+}
+.win-modal-content { background: var(--bg-card); padding: 30px; border-radius: 10px; text-align: center; border: 1px solid var(--accent-gold); }
+.btn-primary { background: var(--accent-gold); color: #000; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
