@@ -399,7 +399,20 @@ function triggerAI() {
         document.getElementById("btn-redo")?.addEventListener("click", () => { if (currentIndex < history.length - 1) jumpToTimelineIndex(currentIndex + 1); });
         
         document.getElementById("btn-another-match")?.addEventListener("click", () => { document.getElementById("btn-reset").click(); });
-        document.getElementById("btn-zen")?.addEventListener("click", () => document.body.classList.toggle("zen-active"));
+        
+        // Toggle Zen Mode (Maximizes board, hides menus)
+        document.getElementById("btn-zen")?.addEventListener("click", () => {
+            document.body.classList.toggle("zen-active");
+            
+            // Optional: Change button text to indicate state
+            const zenBtn = document.getElementById("btn-zen");
+            if (document.body.classList.contains("zen-active")) {
+                zenBtn.innerHTML = "❌ Exit Zen";
+            } else {
+                zenBtn.innerHTML = "👁️ Zen";
+            }
+        });
+
         document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; document.getElementById("btn-reset").click(); });
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
         document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value); });
