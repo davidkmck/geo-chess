@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Topos Chess - Strategy with Terrain</title>
     <link rel="stylesheet" href="style.css">
@@ -27,6 +26,8 @@
             <div class="board-outer" id="board-outer">
                 <div class="board" id="board"></div>
 
+                <div id="inner-board-guide" class="inner-board-guide hidden"></div>
+
                 <div id="win-overlay" class="win-overlay hidden">
                     <div class="win-modal-content">
                         <h2 id="win-title">White Wins!</h2>
@@ -36,9 +37,7 @@
             </div>
         </div>
 
-   
-
-<div class="game-panels">
+        <div class="game-panels">
             <section class="panel-card">
                 <h3>Match Configuration</h3>
                 <div class="control-group">
@@ -49,6 +48,11 @@
                         <option value="none">None (Classic)</option>
                     </select>
                 </div>
+                
+                <div class="control-group">
+                    <label><input type="checkbox" id="inner-board-toggle"> Show 8x8 Core</label>
+                </div>
+
                 <div class="control-group">
                     <label><input type="checkbox" id="ai-toggle" checked> Enable AI</label>
                 </div>
@@ -78,4 +82,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-    
