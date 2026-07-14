@@ -169,33 +169,43 @@ body {
 /* 8x8 Core Guide Overlay (Pure CSS approach) */
 body:has(#inner-board-toggle:checked) .board::after {
     content: "";
-    position: absolute;
-    /* 3 squares in from the left and top out of 14 total */
-    top: calc(100% * 3 / 14);
-    left: calc(100% * 3 / 14);
-    /* 8 squares wide/high out of 14 total */
-    width: calc(100% * 8 / 14);
-    height: calc(100% * 8 / 14);
+    /* Let CSS Grid handle perfect alignment by snapping exactly to the cells */
+    grid-row: 4 / 12;
+    grid-column: 4 / 12;
     
-    /* Finer, darker dashed line */
     border: 2px dashed rgba(0, 0, 0, 0.6); 
     box-sizing: border-box;
     pointer-events: none; /* Lets clicks pass through to the board */
     z-index: 10;
 }
+////
 
-
-/* UI Overlays */
+/* UI Overlays & Zen Mode */
 .hidden { display: none !important; }
+
+/* Hide non-essential elements during Zen Mode */
 body.zen-active .game-panels, 
 body.zen-active .controls-header #btn-reset, 
 body.zen-active .controls-header #btn-flip,
-body.zen-active .controls-header h1 { display: none !important; }
-
-.win-overlay {
-    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex; align-items: center; justify-content: center; z-index: 10;
+body.zen-active .controls-header h1 { 
+    display: none !important; 
 }
-.win-modal-content { background: var(--bg-card); padding: 30px; border-radius: 10px; text-align: center; border: 1px solid var(--accent-gold); }
-.btn-primary { background: var(--accent-gold); color: #000; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+/* Maximize board size in Zen Mode */
+body.zen-active .board-container-wrapper {
+    /* Remove the 500px maximum */
+    max-width: none;
+    
+    /* Scale to the maximum possible size without requiring scrolling.
+       It takes the smaller of viewport width or available viewport height. */
+    width: 100%;
+    max-width: calc(min(100vw - 20px, 100vh - 80px));
+    margin: 0 auto;
+}
+
+/* Tighter layout padding when maximized */
+body.zen-active .game-layout {
+    padding: 5px; 
+}
+
+
