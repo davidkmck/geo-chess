@@ -169,16 +169,23 @@ body {
 /* 8x8 Core Guide Overlay (Pure CSS approach) */
 body:has(#inner-board-toggle:checked) .board::after {
     content: "";
-    /* Let CSS Grid handle perfect alignment by snapping exactly to the cells */
+    
+    /* Removes the overlay from the grid's sizing math to prevent warping in Edge/Safari */
+    position: absolute; 
+    
+    /* Grid lines now act purely as coordinate boundaries for the absolute element */
     grid-row: 4 / 12;
     grid-column: 4 / 12;
+    
+    /* Fill the exact space defined by those coordinates */
+    width: 100%;
+    height: 100%;
     
     border: 2px dashed rgba(0, 0, 0, 0.6); 
     box-sizing: border-box;
     pointer-events: none; /* Lets clicks pass through to the board */
     z-index: 10;
 }
-////
 
 /* UI Overlays & Zen Mode */
 .hidden { display: none !important; }
