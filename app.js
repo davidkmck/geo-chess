@@ -403,6 +403,18 @@ function triggerAI() {
         document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; document.getElementById("btn-reset").click(); });
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
         document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value); });
+
+        // NEW: Toggle the 8x8 core guide overlay
+        document.getElementById("inner-board-toggle")?.addEventListener("change", (e) => {
+            const guide = document.getElementById("inner-board-guide");
+            if (guide) {
+                if (e.target.checked) {
+                    guide.classList.remove("hidden");
+                } else {
+                    guide.classList.add("hidden");
+                }
+            }
+        });
         
         saveState();
         render();
