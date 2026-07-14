@@ -126,3 +126,43 @@ body {
 .cell.legal-move::before {
     content: "";
     position: absolute
+
+    
+/* Pieces */
+.piece { 
+    font-size: 26px; /* Slightly larger for readability */
+    cursor: grab; 
+    user-select: none; 
+    z-index: 3; 
+    /* Force standard text rendering instead of emojis */
+    font-family: "Segoe UI Symbol", "Apple Symbols", sans-serif; 
+}
+
+.piece.white { 
+    color: #fff !important; 
+    -webkit-text-stroke: 1.5px #000; /* Heavy black outline for light squares */
+    text-shadow: 0 4px 4px rgba(0, 0, 0, 0.5); 
+}
+
+.piece.black { 
+    color: #000 !important; 
+    -webkit-text-stroke: 1px #fff; /* White outline for dark squares */
+    text-shadow: 0 4px 4px rgba(255, 255, 255, 0.3); 
+}
+
+/* 8x8 Core Guide Overlay (Pure CSS approach) */
+body.show-core-guide .board::after {
+    content: "";
+    position: absolute;
+    /* 3 squares in from the left and top out of 14 total */
+    top: calc(100% * 3 / 14);
+    left: calc(100% * 3 / 14);
+    /* 8 squares wide/high out of 14 total */
+    width: calc(100% * 8 / 14);
+    height: calc(100% * 8 / 14);
+    
+    border: 4px dashed rgba(255, 215, 0, 0.9); /* Bright Gold */
+    box-sizing: border-box;
+    pointer-events: none; /* Lets clicks pass through to the board */
+    z-index: 10;
+}
