@@ -381,18 +381,39 @@ function makeMove(from, to) {
     }
     */
 
-    function triggerAI() {
+function triggerAI() {
         if (gameOver) return;
         aiThinking = true;
         setTimeout(() => {
             if (typeof AI !== 'undefined') {
-                // FIX 3: only ever offer the AI truly legal moves to choose from.
                 const legalMoves = computeLegalMoves("b", board);
-                const res = AI.findBestMove(board, aiDepth, "b", PIECE_VALUES, legalMoves, cloneBoard, isSquareAttacked, generateAllLegalMoves, aiLastMove);
-                aiThinking = false;
-                if (res && res.move) {
-                    aiLastMove = res.move;
-                    makeMove(res.move.from, res.move.to);
+                let chosenMove = null;
+
+                try {
+                    // Attempt to get a move from the engine
+                    const res = AI.findBestMove(board, aiDepth, "b", PIECE_VALUES, legalMoves, cloneBoard, isSquareAttacked, generateAllLegalMoves, aiLastMove);
+                    if (res && res.move) {
+                        chosenMove = res.move;
+                    }
+                } catch (error) {
+                    // Catch any internal engine errors so they don't break the main thread
+                    console.error("AI Engine panic/crash:", error);
+                }
+
+                // FAILSAFE: If the AI returned nothing (forced mate panic) or crashed
+                if (!chosenMove && legalMoves.length > 0) {
+                    console.warn("AI failed to choose a move. Triggering random fallback.");
+                    // Pick a random legal move to prevent a softlock
+                    chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                }
+
+                // Always unlock the UI
+                aiThinking = false; 
+                
+                // Execute the finalized move
+                if (chosenMove) {
+                    aiLastMove = chosenMove;
+                    makeMove(chosenMove.from, chosenMove.to);
                 }
             }
         }, 50);
