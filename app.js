@@ -431,6 +431,98 @@ function freshBoard() {
         });
     }
 
+function render() {
+    const container = document.getElementById("board");
+    if (!container) return;
+    container.innerHTML = "";
+    applyCameraTransform();
+    
+    for (let viewR = 0; viewR < SIZE; viewR++) {
+        for (let viewF = 0; viewF < SIZE; viewF++) {
+            // Determine logical board coordinates based on flip state
+            const r = isFlipped ? SIZE - 1 - viewR : viewR;
+            const f = isFlipped ? SIZE - 1 - viewF : viewF;
+            
+            const cell = document.createElement("div");
+            cell.className = `cell ${(r + f) % 2 === 0 ? 'light' : 'dark'} terrain-${terrain(r, f)}`;
+            
+            // Highlight last move targets
+            if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cell.classList.add("last-move-source");
+            if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cell.classList.add("last-move-target");
+
+            if (selected && selected.r === r && selected.f === f) {
+                cell.classList.add("selected");
+            }
+            
+            if (legalTargets.some(t => t.r === r && t.f === f)) {
+                const hasEnemy = board[r][f] && board[r][f].color !== turn;
+                cell.classList.add(hasEnemy ? "legal-capture" : "legal-move");
+            }
+
+            const p = board[r][f];
+            if (p) {
+                const piece = document.createElement("span");
+                piece.className = `piece ${p.color === 'w' ? 'white' : 'black'}`;
+                piece.textContent = PIECE_SYMBOLS[p.color][p.type];
+                cell.appendChild(piece);
+            }
+            
+            cell.onclick = () => {
+                if (gameOver || aiThinking || (aiEnabled && turn === "b")) return;
+                if (selected && legalTargets.some(t => t.r === r && t.f === f)) {
+                    makeMove(selected, {r, f});
+                } else if (board[r][f] && board[r][f].color === turn) { 
+                    selected = {r, f}; 
+                    // FIX 3: only offer moves that don't leave your own king in check.
+                    legalTargets = getLegalMoves(r, f, board); 
+                    render(); 
+                } else {
+                    selected = null;
+                    legalTargets = [];
+                    render();
+                }
+            };
+            container.appendChild(cell);
+        }
+    }
+
+    // FIX 3: highlight the king that is currently in check.
+    if (isInCheck(turn, board)) {
+        for (let checkR = 0; checkR < SIZE; checkR++) {
+            for (let checkF = 0; checkF < SIZE; checkF++) {
+                const p = board[checkR][checkF];
+                if (p && p.type === "K" && p.color === turn) {
+                    // Match the DOM index with the flipped state
+                    const renderR = isFlipped ? SIZE - 1 - checkR : checkR;
+                    const renderF = isFlipped ? SIZE - 1 - checkF : checkF;
+                    const idx = renderR * SIZE + renderF;
+                    container.children[idx]?.classList.add("king-in-check");
+                }
+            }
+        }
+    }
+    
+    const nodeW = document.getElementById("node-w");
+    const nodeB = document.getElementById("node-b");
+    if (nodeW && nodeB) {
+        nodeW.classList.toggle("active-glow", turn === 'w');
+        nodeB.classList.toggle("active-glow", turn === 'b');
+    }
+
+    const overlay = document.getElementById("win-overlay");
+    const winTitle = document.getElementById("win-title");
+    if (overlay && winTitle) {
+        if (gameOver) {
+            winTitle.textContent = gameOverText;
+            overlay.classList.remove("hidden");
+        } else {
+            overlay.classList.add("hidden");
+        }
+    }
+
+    renderMoveLog();
+}
+    /*
     function render() {
         const container = document.getElementById("board");
         if (!container) return;
@@ -515,6 +607,8 @@ function freshBoard() {
 
         renderMoveLog();
     }
+
+    */
 
     function init() {
         board = freshBoard();
