@@ -16,6 +16,9 @@
     let zoomPreset = 1, panX = 0, panY = 0, startMouseX = 0, startMouseY = 0, startPanX = 0, startPanY = 0, isPanning = false;
     let isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
 
+    // Tracks the AI's own previous move, so it can be discouraged from immediately undoing it.
+    let aiLastMove = null;
+
     const TERRAIN_PRESETS = {
         default: ["pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "ppMMFFpppppppp", "ppMMFFLLpppppp", "ppppppLLpppppp", "rrrfrrrppppppp", "pppppprrrrrrfr", "ppppppLLpppppp", "ppppppLLFFMMpp", "ppppppppFFMMpp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp"],
         alternative: ["pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "ppppFFrrpppppp", "ppMMppppppMMpp", "ppMMppppppMMpp", "ppMMppppppMMpp", "ppMMppppppMMpp", "pppprrFFpppppp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp"],
@@ -38,7 +41,7 @@
         return true;
     }
 
-    // NEW: Dynamic Board Generator
+    // Dynamic Board Generator
     function freshBoard() {
         const whiteStart = document.getElementById("white-start-select")?.value || "topos";
         const blackStart = document.getElementById("black-start-select")?.value || "topos";
@@ -46,7 +49,9 @@
         const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
 
         const coreBackRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
-        const toposBackRank = ['P', 'P', 'P', 'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R', 'P', 'P', 'P'];
+        // FIX 1: Topos back rank is now 14 real pieces (4R, 4N, 4B, Q, K) - no pawns mixed in.
+        // The full pawn row is placed separately, one rank in front of this.
+        const toposBackRank = ['R', 'N', 'B', 'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R', 'B', 'N', 'R'];
 
         // DEPLOY BLACK
         if (blackStart === "classic") {
@@ -123,7 +128,6 @@
             const nr = r + dir;
             if (nr >= 0 && nr < SIZE && !bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
                 moves.push({ r: nr, f: f });
-                // FIX: Pawn double-move now strictly checks if the piece has moved, not its row.
                 if (!p.moved && !bMatrix[r + (2 * dir)][f] && !isImpassable(terrain(r + (2 * dir), f))) {
                     moves.push({ r: r + (2 * dir), f: f });
                 }
@@ -158,6 +162,8 @@
         return moves;
     }
 
+    // Pseudo-legal move generation (doesn't check whether the mover's own king ends up in
+    // check). Kept fast and used internally by the AI's deep search tree.
     function generateAllLegalMoves(color, bMatrix) {
         const list = [];
         for (let r = 0; r < SIZE; r++) for (let f = 0; f < SIZE; f++) if (bMatrix[r][f] && bMatrix[r][f].color === color) getMoves(r, f, bMatrix).forEach(t => list.push({ from: { r, f }, to: t }));
@@ -178,41 +184,57 @@
         return false;
     }
 
-    function isCheckmate(color, bMatrix) {
-        let kingPos = null;
+    // FIX 3: Genuine check/checkmate support -----------------------------------------
+
+    function findKing(color, bMatrix) {
         for (let r = 0; r < SIZE; r++) {
             for (let f = 0; f < SIZE; f++) {
                 const p = bMatrix[r][f];
-                if (p && p.type === "K" && p.color === color) {
-                    kingPos = { r, f };
-                    break;
-                }
+                if (p && p.type === "K" && p.color === color) return { r, f };
             }
         }
-        
-        if (!kingPos) return false;
-        if (!isSquareAttacked(kingPos.r, kingPos.f, color, bMatrix)) return false;
-
-        const allMoves = generateAllLegalMoves(color, bMatrix);
-        for (const move of allMoves) {
-            const nextBoard = cloneBoard(bMatrix);
-            nextBoard[move.to.r][move.to.f] = { ...nextBoard[move.from.r][move.from.f], moved: true };
-            nextBoard[move.from.r][move.from.f] = null;
-            
-            let nextKingPos = null;
-            for (let r = 0; r < SIZE; r++) {
-                for (let f = 0; f < SIZE; f++) {
-                    if (nextBoard[r][f] && nextBoard[r][f].type === "K" && nextBoard[r][f].color === color) {
-                        nextKingPos = { r, f };
-                    }
-                }
-            }
-            if (nextKingPos && !isSquareAttacked(nextKingPos.r, nextKingPos.f, color, nextBoard)) {
-                return false; 
-            }
-        }
-        return true; 
+        return null;
     }
+
+    function isKingSafe(color, bMatrix) {
+        const kp = findKing(color, bMatrix);
+        if (!kp) return true; // king missing/captured - not a "check" state
+        return !isSquareAttacked(kp.r, kp.f, color, bMatrix);
+    }
+
+    function isInCheck(color, bMatrix) {
+        return !isKingSafe(color, bMatrix);
+    }
+
+    // Real, legality-filtered moves for a single piece: excludes any pseudo-legal move that
+    // would leave (or keep) the mover's own king in check.
+    function getLegalMoves(r, f, bMatrix) {
+        const p = bMatrix[r][f];
+        if (!p) return [];
+        return getMoves(r, f, bMatrix).filter(m => {
+            const nb = cloneBoard(bMatrix);
+            nb[m.r][m.f] = { ...nb[r][f], moved: true };
+            nb[r][f] = null;
+            return isKingSafe(p.color, nb);
+        });
+    }
+
+    // Real, legality-filtered moves for an entire side. Used for actual gameplay (human clicks,
+    // AI's final move choice) and for checkmate/stalemate detection - NOT used inside the AI's
+    // deep search tree, where the faster pseudo-legal generateAllLegalMoves is used instead.
+    function computeLegalMoves(color, bMatrix) {
+        const list = [];
+        for (let r = 0; r < SIZE; r++) {
+            for (let f = 0; f < SIZE; f++) {
+                if (bMatrix[r][f] && bMatrix[r][f].color === color) {
+                    getLegalMoves(r, f, bMatrix).forEach(t => list.push({ from: { r, f }, to: t }));
+                }
+            }
+        }
+        return list;
+    }
+
+    // ---------------------------------------------------------------------------------
 
     function makeMove(from, to) {
         const p = board[from.r][from.f];
@@ -237,9 +259,17 @@
 
         turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
         
-        if (isCheckmate(turn, board)) {
+        // FIX 3: properly detect checkmate (no legal moves + king attacked) and stalemate
+        // (no legal moves + king safe), instead of relying on illegal moves + regicide.
+        const nextInCheck = isInCheck(turn, board);
+        const nextLegalMoves = computeLegalMoves(turn, board);
+        if (nextLegalMoves.length === 0) {
             gameOver = true;
-            gameOverText = turn === "w" ? "Black Wins by Checkmate!" : "White Wins by Checkmate!";
+            if (nextInCheck) {
+                gameOverText = turn === "w" ? "Black Wins by Checkmate!" : "White Wins by Checkmate!";
+            } else {
+                gameOverText = "Draw by Stalemate!";
+            }
         }
 
         saveState();
@@ -252,9 +282,14 @@
         aiThinking = true;
         setTimeout(() => {
             if (typeof AI !== 'undefined') {
-                const res = AI.minimax(board, aiDepth, -Infinity, Infinity, false, PIECE_VALUES, generateAllLegalMoves, cloneBoard, isSquareAttacked);
+                // FIX 3: only ever offer the AI truly legal moves to choose from.
+                const legalMoves = computeLegalMoves("b", board);
+                const res = AI.findBestMove(board, aiDepth, "b", PIECE_VALUES, legalMoves, cloneBoard, isSquareAttacked, generateAllLegalMoves, aiLastMove);
                 aiThinking = false;
-                if (res && res.move) makeMove(res.move.from, res.move.to);
+                if (res && res.move) {
+                    aiLastMove = res.move;
+                    makeMove(res.move.from, res.move.to);
+                }
             }
         }, 50);
     }
@@ -308,6 +343,16 @@
         outer.addEventListener("pointercancel", () => {
             isPanning = false;
         });
+    }
+
+    // FIX 2: automatically show the 8x8 core guide whenever either side deploys "classic".
+    function syncCoreToggle() {
+        const white = document.getElementById("white-start-select")?.value;
+        const black = document.getElementById("black-start-select")?.value;
+        const toggle = document.getElementById("inner-board-toggle");
+        if (toggle && (white === "classic" || black === "classic")) {
+            toggle.checked = true;
+        }
     }
 
     // UI Renderers
@@ -377,7 +422,8 @@
                         makeMove(selected, {r, f});
                     } else if (board[r][f] && board[r][f].color === turn) { 
                         selected = {r, f}; 
-                        legalTargets = getMoves(r, f, board); 
+                        // FIX 3: only offer moves that don't leave your own king in check.
+                        legalTargets = getLegalMoves(r, f, board); 
                         render(); 
                     } else {
                         selected = null;
@@ -386,6 +432,19 @@
                     }
                 };
                 container.appendChild(cell);
+            }
+        }
+
+        // FIX 3: highlight the king that is currently in check.
+        if (isInCheck(turn, board)) {
+            for (let r = 0; r < SIZE; r++) {
+                for (let f = 0; f < SIZE; f++) {
+                    const p = board[r][f];
+                    if (p && p.type === "K" && p.color === turn) {
+                        const idx = r * SIZE + f;
+                        container.children[idx]?.classList.add("king-in-check");
+                    }
+                }
             }
         }
         
@@ -421,7 +480,7 @@
         });
         document.getElementById("btn-reset")?.addEventListener("click", () => { 
             board = freshBoard(); turn = "w"; selected = null; legalTargets = []; gameOver = false;
-            lastMoveSource = null; lastMoveTarget = null; history = []; moveLog = [];
+            lastMoveSource = null; lastMoveTarget = null; history = []; moveLog = []; aiLastMove = null;
             saveState(); render(); 
         });
         document.getElementById("btn-undo")?.addEventListener("click", () => { if (currentIndex > 0) jumpToTimelineIndex(currentIndex - 1); });
@@ -445,14 +504,18 @@
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
         document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value); });
 
-        // NEW: Reload the board immediately if a player changes their deployment style
+        // Reload the board immediately if a player changes their deployment style, and
+        // auto-enable the 8x8 core guide if either side is now "classic".
         document.getElementById("white-start-select")?.addEventListener("change", () => {
+            syncCoreToggle();
             document.getElementById("btn-reset").click();
         });
         document.getElementById("black-start-select")?.addEventListener("change", () => {
+            syncCoreToggle();
             document.getElementById("btn-reset").click();
         });
-        
+
+        syncCoreToggle();
         saveState();
         render();
     }

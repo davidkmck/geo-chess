@@ -56,7 +56,6 @@ body {
     gap: 15px;
 }
 
-/* FIX 1: Strict Grid layout guarantees the board won't bleed off the screen */
 .board-container-wrapper {
     display: grid;
     grid-template-columns: 30px minmax(0, 1fr);
@@ -81,7 +80,6 @@ body {
 .active-glow { background: var(--accent-gold); box-shadow: 0 0 10px var(--accent-gold); }
 .vertical-slider { -webkit-appearance: slider-vertical; height: 100px; }
 
-/* FIX 2: Added touch-action to capture mobile gestures for panning */
 .board-outer {
     width: 100%;
     aspect-ratio: 1 / 1;
@@ -93,11 +91,8 @@ body {
 
 .board {
     display: grid !important;
-
-    /* FIX: minmax(0, 1fr) forces strictly equal squares, ignoring content size */
     grid-template-columns: repeat(14, minmax(0, 1fr));
     grid-template-rows: repeat(14, minmax(0, 1fr));
-    
     width: 100%;
     height: 100%;
     position: absolute;
@@ -118,14 +113,12 @@ body {
 .cell.light { background: var(--clr-light); }
 .cell.dark { background: var(--clr-dark); }
 
-/* Terrain Overlays */
 .cell.terrain-mountain { background: var(--terrain-mountain); }
 .cell.terrain-forest { background: var(--terrain-forest); }
 .cell.terrain-lake { background: var(--terrain-lake); }
 .cell.terrain-river { background: var(--terrain-river); }
 .cell.terrain-ford { background: var(--terrain-ford); }
 
-/* Move Indicators */
 .cell.legal-move::before {
     content: "";
     position: absolute;
@@ -148,7 +141,23 @@ body {
 }
 .cell.selected { box-shadow: inset 0 0 0 3px var(--accent-gold); z-index: 2; }
 
-/* Pieces */
+/* Check indicator: pulsing red ring around a king that is currently under attack */
+.cell.king-in-check::after {
+    content: "";
+    position: absolute;
+    inset: 6%;
+    border: 3px solid #ff3b3b;
+    border-radius: 50%;
+    box-shadow: 0 0 10px 3px rgba(255, 59, 59, 0.85);
+    pointer-events: none;
+    z-index: 4;
+    animation: check-pulse 1s ease-in-out infinite;
+}
+@keyframes check-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
+
 .piece { 
     font-size: 28px; 
     cursor: grab; 
@@ -159,41 +168,29 @@ body {
 
 .piece.white { 
     color: #ffffff !important; 
-    /* Just a clean, simple drop shadow to separate it from the board */
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8); 
 }
 
 .piece.black { 
     color: #000000 !important; 
-    /* Soft light shadow so black pieces don't get lost on dark squares */
     text-shadow: 0 2px 4px rgba(255, 255, 255, 0.4); 
 }
 
-/* 8x8 Core Guide Overlay (Pure CSS approach) */
 body:has(#inner-board-toggle:checked) .board::after {
     content: "";
-    
-    /* Removes the overlay from the grid's sizing math to prevent warping in Edge/Safari */
     position: absolute; 
-    
-    /* Grid lines now act purely as coordinate boundaries for the absolute element */
     grid-row: 4 / 12;
     grid-column: 4 / 12;
-    
-    /* Fill the exact space defined by those coordinates */
     width: 100%;
     height: 100%;
-    
     border: 2px dashed rgba(0, 0, 0, 0.6); 
     box-sizing: border-box;
-    pointer-events: none; /* Lets clicks pass through to the board */
+    pointer-events: none;
     z-index: 10;
 }
 
-/* UI Overlays & Zen Mode */
 .hidden { display: none !important; }
 
-/* Hide non-essential elements during Zen Mode */
 body.zen-active .game-panels, 
 body.zen-active .controls-header #btn-reset, 
 body.zen-active .controls-header #btn-flip,
@@ -201,21 +198,13 @@ body.zen-active .controls-header h1 {
     display: none !important; 
 }
 
-/* Maximize board size in Zen Mode */
 body.zen-active .board-container-wrapper {
-    /* Remove the 500px maximum */
     max-width: none;
-    
-    /* Scale to the maximum possible size without requiring scrolling.
-       It takes the smaller of viewport width or available viewport height. */
     width: 100%;
     max-width: calc(min(100vw - 20px, 100vh - 80px));
     margin: 0 auto;
 }
 
-/* Tighter layout padding when maximized */
 body.zen-active .game-layout {
     padding: 5px; 
 }
-
-
