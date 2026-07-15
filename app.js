@@ -144,7 +144,7 @@ function freshBoard() {
         updateUndoRedoButtons();
     }
 
-    function jumpToTimelineIndex(idx) {
+function jumpToTimelineIndex(idx) {
         if (idx < 0 || idx >= history.length) return;
         currentIndex = idx;
         const stateData = history[currentIndex];
@@ -153,8 +153,9 @@ function freshBoard() {
         lastMoveSource = stateData.lastMoveSource ? { ...stateData.lastMoveSource } : null;
         lastMoveTarget = stateData.lastMoveTarget ? { ...stateData.lastMoveTarget } : null;
         selected = null; legalTargets = [];
-        updateUndoRedoButtons(); render();
-        if (!gameOver && aiEnabled && turn === "b") triggerAI();
+        updateUndoRedoButtons(); 
+        render();
+        // The AI trigger that used to be here has been intentionally removed!
     }
 
     function updateUndoRedoButtons() {
@@ -806,7 +807,18 @@ function render() {
             lastMoveSource = null; lastMoveTarget = null; history = []; moveLog = []; aiLastMove = null;
             saveState(); render(); 
         });
-        document.getElementById("btn-undo")?.addEventListener("click", () => { if (currentIndex > 0) jumpToTimelineIndex(currentIndex - 1); });
+    
+        document.getElementById("btn-undo")?.addEventListener("click", () => { 
+            // If AI is on and it's our turn, we want to undo BOTH the AI's last move and our last move.
+            const stepsToUndo = (aiEnabled && turn === "w") ? 2 : 1;
+            
+            if (currentIndex >= stepsToUndo) {
+                jumpToTimelineIndex(currentIndex - stepsToUndo);
+            } else if (currentIndex > 0) {
+                // Fallback just in case there is only 1 move in the whole history
+                jumpToTimelineIndex(currentIndex - 1);
+            }
+        });
         document.getElementById("btn-redo")?.addEventListener("click", () => { if (currentIndex < history.length - 1) jumpToTimelineIndex(currentIndex + 1); });
         document.getElementById("btn-flip")?.addEventListener("click", () => { 
             isFlipped = !isFlipped; 
