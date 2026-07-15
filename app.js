@@ -283,6 +283,62 @@ function freshBoard() {
 
     // ---------------------------------------------------------------------------------
 
+function makeMove(from, to) {
+        const p = board[from.r][from.f];
+        const captured = board[to.r][to.f];
+        
+        // Prepare the base move notation
+        let moveString = `${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`;
+
+        board[to.r][to.f] = { ...p, moved: true };
+        board[from.r][from.f] = null;
+        
+        // --- NEW: Pawn Promotion (Auto-Queen) ---
+        if (p.type === "P") {
+            const promotionRank = p.color === "w" ? 0 : SIZE - 1;
+            if (to.r === promotionRank) {
+                board[to.r][to.f].type = "Q"; // Transform into a Queen
+                moveString += "=Q";           // Append promotion to the log
+            }
+        }
+        
+        // Log Move
+        moveLog.push(moveString);
+        
+        lastMoveSource = { ...from };
+        lastMoveTarget = { ...to };
+        
+        if (captured && captured.type === "K") {
+            gameOver = true;
+            gameOverText = p.color === "w" ? "White Wins by Regicide!" : "Black Wins by Regicide!";
+            saveState();
+            render();
+            return;
+        }
+
+        turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
+        
+        // properly detect checkmate (no legal moves + king attacked) and stalemate
+        // (no legal moves + king safe), instead of relying on illegal moves + regicide.
+        const nextInCheck = isInCheck(turn, board);
+        const nextLegalMoves = computeLegalMoves(turn, board);
+        if (nextLegalMoves.length === 0) {
+            gameOver = true;
+            if (nextInCheck) {
+                gameOverText = turn === "w" ? "Black Wins by Checkmate!" : "White Wins by Checkmate!";
+            } else {
+                gameOverText = "Draw by Stalemate!";
+            }
+        }
+
+        saveState();
+        render();
+        if (aiEnabled && turn === "b" && !gameOver) triggerAI();
+    }
+
+    //////
+
+    /*
     function makeMove(from, to) {
         const p = board[from.r][from.f];
         const captured = board[to.r][to.f];
@@ -323,6 +379,7 @@ function freshBoard() {
         render();
         if (aiEnabled && turn === "b" && !gameOver) triggerAI();
     }
+    */
 
     function triggerAI() {
         if (gameOver) return;
