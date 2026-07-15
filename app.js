@@ -626,7 +626,10 @@ function render() {
         });
         document.getElementById("btn-undo")?.addEventListener("click", () => { if (currentIndex > 0) jumpToTimelineIndex(currentIndex - 1); });
         document.getElementById("btn-redo")?.addEventListener("click", () => { if (currentIndex < history.length - 1) jumpToTimelineIndex(currentIndex + 1); });
-        
+        document.getElementById("btn-flip")?.addEventListener("click", () => { 
+            isFlipped = !isFlipped; 
+            render(); 
+        });
         document.getElementById("btn-another-match")?.addEventListener("click", () => { document.getElementById("btn-reset").click(); });
         
         // Toggle Zen Mode (Maximizes board, hides menus)
