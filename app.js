@@ -5,7 +5,6 @@
     const FILES = "abcdefghijklmn".split("");
     const PIECE_SYMBOLS = { w: { P: "♙", R: "♖", N: "♘", B: "♗", Q: "♕", K: "♔" }, b: { P: "♟", R: "♜", N: "♞", B: "♝", Q: "♛", K: "♚" } };
     const PIECE_VALUES = { P: 10, N: 30, B: 30, R: 50, Q: 90, K: 9000 };
-    const BACK_RANK_FILES = { 3: "R", 4: "N", 5: "B", 6: "Q", 7: "K", 8: "B", 9: "N", 10: "R" };
 
     let board = [], turn = "w", selected = null, legalTargets = [], gameOver = false, gameOverText = "", currentTerrain = 'default';
     let lastMoveSource = null, lastMoveTarget = null;
@@ -39,14 +38,42 @@
         return true;
     }
 
+    // NEW: Dynamic Board Generator
     function freshBoard() {
+        const whiteStart = document.getElementById("white-start-select")?.value || "topos";
+        const blackStart = document.getElementById("black-start-select")?.value || "topos";
+        
         const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
-        for (let f = 0; f < SIZE; f++) {
-            if (BACK_RANK_FILES[f]) b[0][f] = { type: BACK_RANK_FILES[f], color: "b", moved: false };
-            b[1][f] = { type: "P", color: "b", moved: false };
-            b[SIZE - 2][f] = { type: "P", color: "w", moved: false };
-            if (BACK_RANK_FILES[f]) b[SIZE - 1][f] = { type: BACK_RANK_FILES[f], color: "w", moved: false };
+
+        const coreBackRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
+        const toposBackRank = ['P', 'P', 'P', 'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R', 'P', 'P', 'P'];
+
+        // DEPLOY BLACK
+        if (blackStart === "classic") {
+            for (let x = 0; x < 8; x++) {
+                b[3][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
+                b[4][x + 3] = { type: "P", color: "b", moved: false };
+            }
+        } else {
+            for (let x = 0; x < 14; x++) {
+                b[0][x] = { type: toposBackRank[x], color: "b", moved: false };
+                b[1][x] = { type: "P", color: "b", moved: false };
+            }
         }
+
+        // DEPLOY WHITE
+        if (whiteStart === "classic") {
+            for (let x = 0; x < 8; x++) {
+                b[10][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
+                b[9][x + 3] = { type: "P", color: "w", moved: false };
+            }
+        } else {
+            for (let x = 0; x < 14; x++) {
+                b[13][x] = { type: toposBackRank[x], color: "w", moved: false };
+                b[12][x] = { type: "P", color: "w", moved: false };
+            }
+        }
+
         return b;
     }
 
@@ -96,7 +123,10 @@
             const nr = r + dir;
             if (nr >= 0 && nr < SIZE && !bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
                 moves.push({ r: nr, f: f });
-                if ((r === (p.color === "w" ? SIZE - 2 : 1)) && !bMatrix[r + (2 * dir)][f] && !isImpassable(terrain(r + (2 * dir), f))) moves.push({ r: r + (2 * dir), f: f });
+                // FIX: Pawn double-move now strictly checks if the piece has moved, not its row.
+                if (!p.moved && !bMatrix[r + (2 * dir)][f] && !isImpassable(terrain(r + (2 * dir), f))) {
+                    moves.push({ r: r + (2 * dir), f: f });
+                }
             }
             [f - 1, f + 1].forEach(nf => {
                 if (nf >= 0 && nf < SIZE && r + dir >= 0 && r + dir < SIZE) {
@@ -217,12 +247,11 @@
         if (aiEnabled && turn === "b" && !gameOver) triggerAI();
     }
 
-function triggerAI() {
+    function triggerAI() {
         if (gameOver) return;
         aiThinking = true;
         setTimeout(() => {
             if (typeof AI !== 'undefined') {
-                // FIXED: We are now passing isSquareAttacked to the AI engine
                 const res = AI.minimax(board, aiDepth, -Infinity, Infinity, false, PIECE_VALUES, generateAllLegalMoves, cloneBoard, isSquareAttacked);
                 aiThinking = false;
                 if (res && res.move) makeMove(res.move.from, res.move.to);
@@ -290,7 +319,7 @@ function triggerAI() {
         if (!copyBtn) {
             copyBtn = document.createElement("button");
             copyBtn.id = "copy-history-btn";
-            copyBtn.className = "btn-ghost"; // Added your UI class
+            copyBtn.className = "btn-ghost"; 
             copyBtn.textContent = "📋 Copy History";
             copyBtn.addEventListener("click", () => {
                 const historyText = moveLog.map((move, idx) => `${idx + 1}. ${move}`).join('\n');
@@ -304,7 +333,7 @@ function triggerAI() {
             const li = document.createElement("li");
             li.textContent = `${idx + 1}. ${move}`;
             li.style.cursor = "pointer";
-            if (idx === currentIndex - 1) li.style.fontWeight = "bold"; // Active highlight
+            if (idx === currentIndex - 1) li.style.fontWeight = "bold"; 
             li.addEventListener("click", () => jumpToTimelineIndex(idx + 1));
             listEl.appendChild(li);
         });
@@ -404,7 +433,6 @@ function triggerAI() {
         document.getElementById("btn-zen")?.addEventListener("click", () => {
             document.body.classList.toggle("zen-active");
             
-            // Optional: Change button text to indicate state
             const zenBtn = document.getElementById("btn-zen");
             if (document.body.classList.contains("zen-active")) {
                 zenBtn.innerHTML = "❌ Exit Zen";
@@ -417,16 +445,12 @@ function triggerAI() {
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
         document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value); });
 
-        // NEW: Toggle the 8x8 core guide overlay
-        document.getElementById("inner-board-toggle")?.addEventListener("change", (e) => {
-            const guide = document.getElementById("inner-board-guide");
-            if (guide) {
-                if (e.target.checked) {
-                    guide.classList.remove("hidden");
-                } else {
-                    guide.classList.add("hidden");
-                }
-            }
+        // NEW: Reload the board immediately if a player changes their deployment style
+        document.getElementById("white-start-select")?.addEventListener("change", () => {
+            document.getElementById("btn-reset").click();
+        });
+        document.getElementById("black-start-select")?.addEventListener("change", () => {
+            document.getElementById("btn-reset").click();
         });
         
         saveState();
