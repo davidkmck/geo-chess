@@ -26,8 +26,6 @@
             <div class="board-outer" id="board-outer">
                 <div class="board" id="board"></div>
 
-                <div id="inner-board-guide" class="inner-board-guide hidden"></div>
-
                 <div id="win-overlay" class="win-overlay hidden">
                     <div class="win-modal-content">
                         <h2 id="win-title">White Wins!</h2>
@@ -46,6 +44,21 @@
                         <option value="default">Default</option>
                         <option value="alternative">Alternative</option>
                         <option value="none">None (Classic)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="white-start-select">White Deployment:</label>
+                    <select id="white-start-select">
+                        <option value="topos">Topos (14x14)</option>
+                        <option value="classic">Classic (8x8)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="black-start-select">Black Deployment:</label>
+                    <select id="black-start-select">
+                        <option value="topos">Topos (14x14)</option>
+                        <option value="classic">Classic (8x8)</option>
                     </select>
                 </div>
                 
