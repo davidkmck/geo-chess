@@ -403,6 +403,107 @@ function freshBoard() {
     }
 
     // UI Renderers
+
+    function renderMoveLog() {
+        const listEl = document.getElementById("move-log-list");
+        if (!listEl) return;
+
+        // --- NEW: Load Game Widget ---
+        let loadWidget = document.getElementById("load-game-widget");
+        if (!loadWidget) {
+            loadWidget = document.createElement("div");
+            loadWidget.id = "load-game-widget";
+            loadWidget.style.display = "flex";
+            loadWidget.style.flexDirection = "column";
+            loadWidget.style.gap = "8px";
+            loadWidget.style.marginBottom = "15px";
+
+            // Create the input area
+            const textArea = document.createElement("textarea");
+            textArea.id = "load-game-input";
+            textArea.placeholder = "Paste history here (e.g. 1. Ph5→h7)...";
+            textArea.rows = 4;
+            textArea.style.resize = "vertical";
+            textArea.style.background = "rgba(0,0,0,0.2)"; // Blends with most UI themes
+            textArea.style.color = "inherit";
+            textArea.style.border = "1px solid rgba(255,255,255,0.2)";
+            textArea.style.padding = "8px";
+            textArea.style.borderRadius = "4px";
+
+            // Create the Load button
+            const loadBtn = document.createElement("button");
+            loadBtn.className = "btn-ghost";
+            loadBtn.textContent = "📥 Load Game";
+            
+            loadBtn.addEventListener("click", () => {
+                const text = textArea.value;
+                if (text.trim() === "") return;
+                
+                // 1. Reset the board to a clean state
+                document.getElementById("btn-reset").click();
+                
+                // 2. Temporarily disable the AI to prevent race conditions during the loop
+                const tempAiState = aiEnabled;
+                aiEnabled = false;
+
+                // 3. Parse text and execute moves
+                const lines = text.split('\n');
+                // Regex matches: '1. P', 'h', '5', '→', 'h', '7'
+                const regex = /\d+\.\s*[A-Z]([a-n])(\d+)→([a-n])(\d+)/;
+                
+                for (const line of lines) {
+                    const match = line.match(regex);
+                    if (match) {
+                        const fromF = FILES.indexOf(match[1]);
+                        const fromR = parseInt(match[2], 10) - 1;
+                        const toF = FILES.indexOf(match[3]);
+                        const toR = parseInt(match[4], 10) - 1;
+                        
+                        // Ensure the piece exists before attempting to move it
+                        if (board[fromR] && board[fromR][fromF]) {
+                            makeMove({ r: fromR, f: fromF }, { r: toR, f: toF });
+                        }
+                    }
+                }
+
+                // 4. Clean up and restore AI state
+                textArea.value = "";
+                aiEnabled = tempAiState;
+                if (aiEnabled && turn === "b" && !gameOver) triggerAI();
+            });
+
+            loadWidget.appendChild(textArea);
+            loadWidget.appendChild(loadBtn);
+            listEl.parentNode.insertBefore(loadWidget, listEl);
+        }
+
+        // --- EXISTING: Copy History Widget ---
+        let copyBtn = document.getElementById("copy-history-btn");
+        if (!copyBtn) {
+            copyBtn = document.createElement("button");
+            copyBtn.id = "copy-history-btn";
+            copyBtn.className = "btn-ghost"; 
+            copyBtn.textContent = "📋 Copy History";
+            copyBtn.style.marginBottom = "10px"; // Added a bit of spacing
+            copyBtn.addEventListener("click", () => {
+                const historyText = moveLog.map((move, idx) => `${idx + 1}. ${move}`).join('\n');
+                navigator.clipboard.writeText(historyText).catch(err => console.error('Failed to copy: ', err));
+            });
+            listEl.parentNode.insertBefore(copyBtn, listEl); 
+        }
+
+        // --- EXISTING: Move List Generation ---
+        listEl.innerHTML = "";
+        moveLog.forEach((move, idx) => {
+            const li = document.createElement("li");
+            li.textContent = `${idx + 1}. ${move}`;
+            li.style.cursor = "pointer";
+            if (idx === currentIndex - 1) li.style.fontWeight = "bold"; 
+            li.addEventListener("click", () => jumpToTimelineIndex(idx + 1));
+            listEl.appendChild(li);
+        });
+    }
+    /*
     function renderMoveLog() {
         const listEl = document.getElementById("move-log-list");
         if (!listEl) return;
@@ -430,6 +531,9 @@ function freshBoard() {
             listEl.appendChild(li);
         });
     }
+
+    */
+    
 
 function render() {
     const container = document.getElementById("board");
