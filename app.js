@@ -41,6 +41,8 @@
         return true;
     }
 
+
+    /* previous (before 2026-07-15)
     // Dynamic Board Generator
     function freshBoard() {
         const whiteStart = document.getElementById("white-start-select")?.value || "topos";
@@ -81,6 +83,51 @@
 
         return b;
     }
+    */
+    // Dynamic Board Generator
+function freshBoard() {
+    const whiteStart = document.getElementById("white-start-select")?.value || "topos";
+    const blackStart = document.getElementById("black-start-select")?.value || "topos";
+    const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+    
+    // We only need the standard 8 pieces
+    const coreBackRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
+
+    // DEPLOY BLACK
+    if (blackStart === "classic") {
+        for (let x = 0; x < 8; x++) {
+            b[3][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
+            b[4][x + 3] = { type: "P", color: "b", moved: false };
+        }
+    } else {
+        // Topos deployment: 14 pawns across the front, 8 core pieces centered in the back
+        for (let x = 0; x < 14; x++) {
+            b[1][x] = { type: "P", color: "b", moved: false };
+        }
+        for (let x = 0; x < 8; x++) {
+            b[0][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
+        }
+    }
+
+    // DEPLOY WHITE
+    if (whiteStart === "classic") {
+        for (let x = 0; x < 8; x++) {
+            b[10][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
+            b[9][x + 3] = { type: "P", color: "w", moved: false };
+        }
+    } else {
+        // Topos deployment: 14 pawns across the front, 8 core pieces centered in the back
+        for (let x = 0; x < 14; x++) {
+            b[12][x] = { type: "P", color: "w", moved: false };
+        }
+        for (let x = 0; x < 8; x++) {
+            b[13][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
+        }
+    }
+
+    return b;
+}
+    
 
     function cloneBoard(src) { return src.map(row => row.map(cell => cell ? { ...cell } : null)); }
 
