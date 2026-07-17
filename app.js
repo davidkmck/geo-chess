@@ -205,6 +205,44 @@ function jumpToTimelineIndex(idx) {
                     const tgt = bMatrix[nr][nf];
                     if (!tgt || (tgt.color !== p.color && canCapture(tFrom, terrain(nr, nf)))) moves.push({ r: nr, f: nf });
                 }
+
+                // ...^^^  existing Knight/King directional loop ...
+
+        // NEW: Castling Move Generation
+        if (p.type === "K" && !p.moved) {
+            // Check both directions (Kingside = 1, Queenside = -1)
+            [1, -1].forEach(step => {
+                let pathClear = true;
+                let foundRook = false;
+                
+                // Scan out to the edge of the board in this direction
+                for (let x = f + step; x >= 0 && x < SIZE; x += step) {
+                    const sq = bMatrix[r][x];
+                    
+                    // If we hit an impassable mountain, path is blocked
+                    if (isImpassable(terrain(r, x))) {
+                        pathClear = false;
+                        break;
+                    }
+                    
+                    if (sq) {
+                        // If it's our unmoved Rook, we can castle!
+                        if (sq.type === "R" && !sq.moved && sq.color === p.color) {
+                            foundRook = true;
+                        } else {
+                            // Any other piece blocks the path
+                            pathClear = false;
+                        }
+                        break; 
+                    }
+                }
+                
+                // If the path is empty and ends in an unmoved rook, add the 2-square jump
+                if (pathClear && foundRook) {
+                    moves.push({ r: r, f: f + (2 * step) });
+                }
+            });
+        }
             });
         }
         return moves;
@@ -254,18 +292,31 @@ function jumpToTimelineIndex(idx) {
         return !isKingSafe(color, bMatrix);
     }
 
-    // Real, legality-filtered moves for a single piece: excludes any pseudo-legal move that
-    // would leave (or keep) the mover's own king in check.
     function getLegalMoves(r, f, bMatrix) {
         const p = bMatrix[r][f];
         if (!p) return [];
+    
         return getMoves(r, f, bMatrix).filter(m => {
             const nb = cloneBoard(bMatrix);
             nb[m.r][m.f] = { ...nb[r][f], moved: true };
             nb[r][f] = null;
-            return isKingSafe(p.color, nb);
+            
+            let isSafe = isKingSafe(p.color, nb);
+    
+            // NEW: Extra check for Castling
+            if (isSafe && p.type === "K" && Math.abs(m.f - f) === 2) {
+                // Cannot start in check
+                if (isInCheck(p.color, bMatrix)) isSafe = false; 
+                
+                // Cannot pass through an attacked square
+                const passThroughFile = f + (m.f > f ? 1 : -1);
+                if (isSquareAttacked(r, passThroughFile, p.color, bMatrix)) isSafe = false; 
+            }
+    
+            return isSafe;
         });
     }
+    
 
     // Real, legality-filtered moves for an entire side. Used for actual gameplay (human clicks,
     // AI's final move choice) and for checkmate/stalemate detection - NOT used inside the AI's
@@ -284,6 +335,7 @@ function jumpToTimelineIndex(idx) {
 
     // ---------------------------------------------------------------------------------
 
+    /*
 function makeMove(from, to) {
         const p = board[from.r][from.f];
         const captured = board[to.r][to.f];
@@ -356,8 +408,101 @@ function makeMove(from, to) {
         }
 
     }
+*/
 
-    //////
+    /// new make move ////
+    function makeMove(from, to) {
+        const p = board[from.r][from.f];
+        const captured = board[to.r][to.f];
+        
+        // Prepare the base move notation
+        let moveString = `${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`;
+    
+        // --- NEW: Castling (Rook Teleport) ---
+        if (p.type === "K" && Math.abs(to.f - from.f) === 2) {
+            const step = to.f > from.f ? 1 : -1;
+            
+            // Scan the file to find the rook we are castling with
+            let rookFile = to.f;
+            while (rookFile >= 0 && rookFile < SIZE) {
+                const rPiece = board[from.r][rookFile];
+                if (rPiece && rPiece.type === "R" && !rPiece.moved) {
+                    // Teleport the Rook to the square the King skipped over
+                    board[from.r][from.f + step] = { ...rPiece, moved: true };
+                    board[from.r][rookFile] = null;
+                    break;
+                }
+                rookFile += step;
+            }
+            // Override the log notation
+            moveString = to.f > from.f ? "O-O" : "O-O-O"; 
+        }
+    
+        board[to.r][to.f] = { ...p, moved: true };
+        board[from.r][from.f] = null;
+        
+        // --- NEW: Pawn Promotion (Auto-Queen) ---
+        if (p.type === "P") {
+            const promotionRank = p.color === "w" ? 0 : SIZE - 1;
+            if (to.r === promotionRank) {
+                board[to.r][to.f].type = "Q"; // Transform into a Queen
+                moveString += "=Q";           // Append promotion to the log
+            }
+        }
+        
+        // Log Move
+        moveLog.push(moveString);
+        
+        lastMoveSource = { ...from };
+        lastMoveTarget = { ...to };
+        
+        if (captured && captured.type === "K") {
+            gameOver = true;
+            gameOverText = p.color === "w" ? "White Wins by Regicide!" : "Black Wins by Regicide!";
+            saveState();
+            render();
+            return;
+        }
+    
+        turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
+        
+        // properly detect checkmate (no legal moves + king attacked) and stalemate
+        // (no legal moves + king safe), instead of relying on illegal moves + regicide.
+        const nextInCheck = isInCheck(turn, board);
+        const nextLegalMoves = computeLegalMoves(turn, board);
+        if (nextLegalMoves.length === 0) {
+            gameOver = true;
+            if (nextInCheck) {
+                gameOverText = turn === "w" ? "Black Wins by Checkmate!" : "White Wins by Checkmate!";
+            } else {
+                gameOverText = "Draw by Stalemate!";
+            }
+        }
+    
+        saveState();
+        render();
+    
+        // Trigger AI if it's black's turn and the game is still going
+        if (aiEnabled && turn === "b" && !gameOver) triggerAI();
+    
+        if (gameOver) {
+            // turn off the white/black indicator light
+            document.getElementById("node-w").classList.remove("active-glow");
+            document.getElementById("node-b").classList.remove("active-glow");
+            
+            const winOverlay = document.getElementById("win-overlay");
+            const winTitle = document.getElementById("win-title");
+            
+            if (winOverlay && winTitle) {
+                // Update the text to your dynamically generated end-game message
+                winTitle.innerText = gameOverText; 
+                // Remove the 'hidden' class to display the modal
+                winOverlay.classList.remove("hidden"); 
+            }
+        }
+    }
+
+    /// new make move ////
 
     /*
     function makeMove(from, to) {
