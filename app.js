@@ -334,7 +334,16 @@ function makeMove(from, to) {
 
         saveState();
         render();
+
+        // Trigger AI if it's black's turn and the game is still going
         if (aiEnabled && turn === "b" && !gameOver) triggerAI();
+
+    /* fallback
+        // Fire a popup if the game just ended
+        if (gameOver) {
+            setTimeout(() => alert(gameOverText), 50); 
+        }
+    */
     }
 
     //////
@@ -704,6 +713,22 @@ function render() {
     }
 
     renderMoveLog();
+
+
+    // for showing end of game
+    const statusEl = document.getElementById("status-display"); 
+    
+    if (statusEl) {
+        if (gameOver) {
+            // Prominently display the checkmate/regicide text
+            statusEl.innerText = gameOverText;
+            statusEl.style.color = "red"; // Optional: make it pop
+        } else {
+            // Otherwise, just show the normal turn indicator
+            statusEl.innerText = turn === "w" ? "White's Turn" : "Black's Turn";
+            statusEl.style.color = "black";
+        }
+    }
 }
     /*
     function render() {
