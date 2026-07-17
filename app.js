@@ -340,6 +340,10 @@ function makeMove(from, to) {
 
 
         if (gameOver) {
+            // turn off the white/black indicator light
+            document.getElementById("node-w").classList.remove("active-glow");
+            document.getElementById("node-b").classList.remove("active-glow");
+            
             const winOverlay = document.getElementById("win-overlay");
             const winTitle = document.getElementById("win-title");
             
