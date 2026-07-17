@@ -338,12 +338,19 @@ function makeMove(from, to) {
         // Trigger AI if it's black's turn and the game is still going
         if (aiEnabled && turn === "b" && !gameOver) triggerAI();
 
-    /* fallback
-        // Fire a popup if the game just ended
+
         if (gameOver) {
-            setTimeout(() => alert(gameOverText), 50); 
+            const winOverlay = document.getElementById("win-overlay");
+            const winTitle = document.getElementById("win-title");
+            
+            if (winOverlay && winTitle) {
+                // Update the text to your dynamically generated end-game message
+                winTitle.innerText = gameOverText; 
+                // Remove the 'hidden' class to display the modal
+                winOverlay.classList.remove("hidden"); 
+            }
         }
-    */
+
     }
 
     //////
@@ -877,6 +884,12 @@ function render() {
             syncCoreToggle();
             document.getElementById("btn-reset").click();
         });
+
+        // reset win-overlay to hidden
+        const winOverlay = document.getElementById("win-overlay");
+        if (winOverlay) {
+            winOverlay.classList.add("hidden");
+        }
 
         syncCoreToggle();
         saveState();
