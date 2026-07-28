@@ -158,8 +158,19 @@ body {
     50% { opacity: 1; }
 }
 
+/* before 2026-07-28
 .piece { 
     font-size: 28px; 
+    cursor: grab; 
+    user-select: none; 
+    z-index: 3; 
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; 
+}
+*/
+
+.piece { 
+    /* Scales between 14px and 28px based on viewport width */
+    font-size: clamp(14px, 5.5vw, 28px); 
     cursor: grab; 
     user-select: none; 
     z-index: 3; 
