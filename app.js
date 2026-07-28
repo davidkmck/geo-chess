@@ -17,6 +17,8 @@
     const MIN_SCALE = 1, MAX_SCALE = 4;
     let panX = 0, panY = 0, startMouseX = 0, startMouseY = 0, startPanX = 0, startPanY = 0, isPanning = false;
     let isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
+    let hasDragged = false; // NEW: Tracks if the pointer was dragged
+    
     
     // Pinch-to-zoom specific state
     let pointerCache = [];
@@ -504,9 +506,9 @@
 
         outer.addEventListener("pointerdown", (e) => {
             pointerCache.push(e);
+            hasDragged = false; // Reset drag state on new touch
 
             if (pointerCache.length === 1) {
-                // Start panning
                 isPanning = true;
                 startMouseX = e.clientX;
                 startMouseY = e.clientY;
@@ -514,7 +516,6 @@
                 startPanY = panY;
                 outer.setPointerCapture(e.pointerId);
             } else if (pointerCache.length === 2) {
-                // Start pinching, stop panning
                 isPanning = false;
                 initialPinchDistance = getDistance(pointerCache[0], pointerCache[1]);
             }
@@ -523,9 +524,9 @@
         outer.addEventListener("pointermove", (e) => {
             const index = pointerCache.findIndex(p => p.pointerId === e.pointerId);
             if (index !== -1) pointerCache[index] = e;
-
+    
             if (pointerCache.length === 2) {
-                // Handle Pinch Zoom
+                hasDragged = true; // Pinching counts as dragging
                 const currentDistance = getDistance(pointerCache[0], pointerCache[1]);
                 
                 if (initialPinchDistance > 0) {
@@ -539,7 +540,11 @@
                     applyCameraTransform();
                 }
             } else if (pointerCache.length === 1 && isPanning) {
-                // Handle standard 1-finger Pan
+                // If they move the pointer more than 5 pixels, lock out the click event
+                if (Math.abs(e.clientX - startMouseX) > 5 || Math.abs(e.clientY - startMouseY) > 5) {
+                    hasDragged = true;
+                }
+                
                 panX = startPanX + (e.clientX - startMouseX) / currentScale;
                 panY = startPanY + (e.clientY - startMouseY) / currentScale;
                 
@@ -565,22 +570,122 @@
                 isPanning = false;
             }
         };
-
+    
         outer.addEventListener("pointerup", removePointer);
         outer.addEventListener("pointercancel", removePointer);
         outer.addEventListener("pointerout", removePointer);
         
-        // Desktop Mouse Wheel Support
         outer.addEventListener("wheel", (e) => {
-            e.preventDefault(); // Prevents native page scrolling
+            e.preventDefault();
             const zoomFactor = -e.deltaY * 0.002;
             currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, currentScale + zoomFactor));
-            
             clampPan();
             applyCameraTransform();
         }, { passive: false });
     }
 
+    function render() {
+        const container = document.getElementById("board");
+        if (!container) return;
+        container.innerHTML = "";
+        applyCameraTransform();
+        
+        for (let viewR = 0; viewR < SIZE; viewR++) {
+            for (let viewF = 0; viewF < SIZE; viewF++) {
+                const r = isFlipped ? SIZE - 1 - viewR : viewR;
+                const f = isFlipped ? SIZE - 1 - viewF : viewF;
+                
+                const cell = document.createElement("div");
+                cell.className = `cell ${(r + f) % 2 === 0 ? 'light' : 'dark'} terrain-${terrain(r, f)}`;
+                
+                if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cell.classList.add("last-move-source");
+                if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cell.classList.add("last-move-target");
+    
+                if (selected && selected.r === r && selected.f === f) {
+                    cell.classList.add("selected");
+                }
+                
+                if (legalTargets.some(t => t.r === r && t.f === f)) {
+                    const hasEnemy = board[r][f] && board[r][f].color !== turn;
+                    cell.classList.add(hasEnemy ? "legal-capture" : "legal-move");
+                }
+    
+                const p = board[r][f];
+                if (p) {
+                    const piece = document.createElement("span");
+                    piece.className = `piece ${p.color === 'w' ? 'white' : 'black'}`;
+                    piece.textContent = PIECE_SYMBOLS[p.color][p.type];
+                    cell.appendChild(piece);
+                }
+                
+                cell.onclick = () => {
+                    // NEW: Ignore the click if the user was just panning/zooming the camera
+                    if (hasDragged) return; 
+    
+                    if (gameOver || aiThinking || (aiEnabled && turn === "b")) return;
+                    if (selected && legalTargets.some(t => t.r === r && t.f === f)) {
+                        makeMove(selected, {r, f});
+                    } else if (board[r][f] && board[r][f].color === turn) { 
+                        selected = {r, f}; 
+                        legalTargets = getLegalMoves(r, f, board); 
+                        render(); 
+                    } else {
+                        selected = null;
+                        legalTargets = [];
+                        render();
+                    }
+                };
+                container.appendChild(cell);
+            }
+        }
+    
+        if (isInCheck(turn, board)) {
+            for (let checkR = 0; checkR < SIZE; checkR++) {
+                for (let checkF = 0; checkF < SIZE; checkF++) {
+                    const p = board[checkR][checkF];
+                    if (p && p.type === "K" && p.color === turn) {
+                        const renderR = isFlipped ? SIZE - 1 - checkR : checkR;
+                        const renderF = isFlipped ? SIZE - 1 - checkF : checkF;
+                        const idx = renderR * SIZE + renderF;
+                        container.children[idx]?.classList.add("king-in-check");
+                    }
+                }
+            }
+        }
+        
+        const nodeW = document.getElementById("node-w");
+        const nodeB = document.getElementById("node-b");
+        if (nodeW && nodeB) {
+            nodeW.classList.toggle("active-glow", turn === 'w');
+            nodeB.classList.toggle("active-glow", turn === 'b');
+        }
+    
+        const overlay = document.getElementById("win-overlay");
+        const winTitle = document.getElementById("win-title");
+        if (overlay && winTitle) {
+            if (gameOver) {
+                winTitle.textContent = gameOverText;
+                overlay.classList.remove("hidden");
+            } else {
+                overlay.classList.add("hidden");
+            }
+        }
+    
+        renderMoveLog();
+    
+        const statusEl = document.getElementById("status-display"); 
+        if (statusEl) {
+            if (gameOver) {
+                statusEl.innerText = gameOverText;
+                statusEl.style.color = "red"; 
+            } else {
+                statusEl.innerText = turn === "w" ? "White's Turn" : "Black's Turn";
+                statusEl.style.color = "black";
+            }
+        }
+    }
+    
+   
     // FIX 2: automatically show the 8x8 core guide whenever either side deploys "classic".
     function syncCoreToggle() {
         const white = document.getElementById("white-start-select")?.value;
