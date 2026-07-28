@@ -585,100 +585,106 @@
         }, { passive: false });
     }
     */
-    function setupPanning() {
-    const outer = document.getElementById("board-outer");
-    if (!outer) return;
+   
+function setupPanning() {
+        const outer = document.getElementById("board-outer");
+        if (!outer) return;
 
-    function getDistance(p1, p2) {
-        return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
-    }
+        // Use an Object dictionary instead of an Array for bulletproof Android multi-touch
+        const pointers = {}; 
 
-    outer.addEventListener("pointerdown", (e) => {
-        // FIX 1: Store a lightweight object instead of the raw browser event
-        pointerCache.push({ pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
-        hasDragged = false; 
-
-        // FIX 2: Capture EVERY pointer so Android doesn't lose track of multi-touch
-        outer.setPointerCapture(e.pointerId);
-
-        if (pointerCache.length === 1) {
-            isPanning = true;
-            startMouseX = e.clientX;
-            startMouseY = e.clientY;
-            startPanX = panX;
-            startPanY = panY;
-        } else if (pointerCache.length === 2) {
-            isPanning = false;
-            initialPinchDistance = getDistance(pointerCache[0], pointerCache[1]);
-        }
-    });
-
-    outer.addEventListener("pointermove", (e) => {
-        const index = pointerCache.findIndex(p => p.pointerId === e.pointerId);
-        if (index !== -1) {
-            // Update only the coordinates of our cloned object
-            pointerCache[index].clientX = e.clientX;
-            pointerCache[index].clientY = e.clientY;
-        }
-
-        if (pointerCache.length === 2) {
-            hasDragged = true; 
-            const currentDistance = getDistance(pointerCache[0], pointerCache[1]);
+        outer.addEventListener("pointerdown", (e) => {
+            pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
             
-            if (initialPinchDistance > 0) {
-                const scaleDiff = currentDistance / initialPinchDistance;
-                let newScale = currentScale * scaleDiff;
+            const keys = Object.keys(pointers);
+            if (keys.length === 1) {
+                isPanning = true;
+                startMouseX = e.clientX;
+                startMouseY = e.clientY;
+                startPanX = panX;
+                startPanY = panY;
+                hasDragged = false; // Reset drag state on fresh touch
+            } else if (keys.length === 2) {
+                isPanning = false;
+                const p1 = pointers[keys[0]];
+                const p2 = pointers[keys[1]];
+                initialPinchDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+            }
+        });
+
+        outer.addEventListener("pointermove", (e) => {
+            if (!pointers[e.pointerId]) return;
+            
+            // Update the dictionary with fresh coordinates
+            pointers[e.pointerId].x = e.clientX;
+            pointers[e.pointerId].y = e.clientY;
+
+            const keys = Object.keys(pointers);
+            if (keys.length === 2) {
+                hasDragged = true; // Pinching counts as dragging
+                const p1 = pointers[keys[0]];
+                const p2 = pointers[keys[1]];
+                const currentDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
                 
-                currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
-                initialPinchDistance = currentDistance; 
+                if (initialPinchDistance > 0) {
+                    const scaleDiff = currentDistance / initialPinchDistance;
+                    let newScale = currentScale * scaleDiff;
+                    
+                    currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+                    initialPinchDistance = currentDistance; 
+                    
+                    clampPan();
+                    applyCameraTransform();
+                }
+            } else if (keys.length === 1 && isPanning) {
+                // Only count as a drag if they move more than 5 pixels
+                if (Math.abs(e.clientX - startMouseX) > 5 || Math.abs(e.clientY - startMouseY) > 5) {
+                    hasDragged = true;
+                }
+                
+                panX = startPanX + (e.clientX - startMouseX) / currentScale;
+                panY = startPanY + (e.clientY - startMouseY) / currentScale;
                 
                 clampPan();
                 applyCameraTransform();
             }
-        } else if (pointerCache.length === 1 && isPanning) {
-            if (Math.abs(e.clientX - startMouseX) > 5 || Math.abs(e.clientY - startMouseY) > 5) {
-                hasDragged = true;
+        });
+
+        const removePointer = (e) => {
+            delete pointers[e.pointerId]; // Remove from dictionary
+            
+            const keys = Object.keys(pointers);
+            if (keys.length < 2) {
+                initialPinchDistance = -1;
             }
             
-            panX = startPanX + (e.clientX - startMouseX) / currentScale;
-            panY = startPanY + (e.clientY - startMouseY) / currentScale;
-            
+            if (keys.length === 1) {
+                // If one finger stays down after a pinch, reset pan anchors
+                startMouseX = pointers[keys[0]].x;
+                startMouseY = pointers[keys[0]].y;
+                startPanX = panX;
+                startPanY = panY;
+                isPanning = true;
+            } else if (keys.length === 0) {
+                isPanning = false;
+            }
+        };
+
+        // Track all ways a pointer can leave the screen
+        outer.addEventListener("pointerup", removePointer);
+        outer.addEventListener("pointercancel", removePointer);
+        outer.addEventListener("pointerleave", removePointer);
+        
+        outer.addEventListener("wheel", (e) => {
+            e.preventDefault();
+            const zoomFactor = -e.deltaY * 0.002;
+            currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, currentScale + zoomFactor));
             clampPan();
             applyCameraTransform();
-        }
-    });
+        }, { passive: false });
+    }
 
-    const removePointer = (e) => {
-        pointerCache = pointerCache.filter(p => p.pointerId !== e.pointerId);
-        
-        if (pointerCache.length < 2) {
-            initialPinchDistance = -1;
-        }
-        
-        if (pointerCache.length === 1) {
-            startMouseX = pointerCache[0].clientX;
-            startMouseY = pointerCache[0].clientY;
-            startPanX = panX;
-            startPanY = panY;
-            isPanning = true;
-        } else if (pointerCache.length === 0) {
-            isPanning = false;
-        }
-    };
-
-    outer.addEventListener("pointerup", removePointer);
-    outer.addEventListener("pointercancel", removePointer);
-    outer.addEventListener("pointerout", removePointer);
     
-    outer.addEventListener("wheel", (e) => {
-        e.preventDefault();
-        const zoomFactor = -e.deltaY * 0.002;
-        currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, currentScale + zoomFactor));
-        clampPan();
-        applyCameraTransform();
-    }, { passive: false });
-}
-
     function render() {
         const container = document.getElementById("board");
         if (!container) return;
@@ -710,6 +716,12 @@
                     const piece = document.createElement("span");
                     piece.className = `piece ${p.color === 'w' ? 'white' : 'black'}`;
                     piece.textContent = PIECE_SYMBOLS[p.color][p.type];
+
+                    // NEW: Make the piece immune to mouse interference 
+                piece.style.pointerEvents = "none";
+                piece.style.userSelect = "none";
+                piece.style.webkitUserDrag = "none";
+                    
                     cell.appendChild(piece);
                 }
                 
