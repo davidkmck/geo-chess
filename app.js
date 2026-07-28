@@ -496,6 +496,7 @@
         boardEl.style.transform = `scale(${currentScale}) translate(${panX}px, ${panY}px)`;
     }
 
+    /* old
     function setupPanning() {
         const outer = document.getElementById("board-outer");
         if (!outer) return;
@@ -583,6 +584,100 @@
             applyCameraTransform();
         }, { passive: false });
     }
+    */
+    function setupPanning() {
+    const outer = document.getElementById("board-outer");
+    if (!outer) return;
+
+    function getDistance(p1, p2) {
+        return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+    }
+
+    outer.addEventListener("pointerdown", (e) => {
+        // FIX 1: Store a lightweight object instead of the raw browser event
+        pointerCache.push({ pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY });
+        hasDragged = false; 
+
+        // FIX 2: Capture EVERY pointer so Android doesn't lose track of multi-touch
+        outer.setPointerCapture(e.pointerId);
+
+        if (pointerCache.length === 1) {
+            isPanning = true;
+            startMouseX = e.clientX;
+            startMouseY = e.clientY;
+            startPanX = panX;
+            startPanY = panY;
+        } else if (pointerCache.length === 2) {
+            isPanning = false;
+            initialPinchDistance = getDistance(pointerCache[0], pointerCache[1]);
+        }
+    });
+
+    outer.addEventListener("pointermove", (e) => {
+        const index = pointerCache.findIndex(p => p.pointerId === e.pointerId);
+        if (index !== -1) {
+            // Update only the coordinates of our cloned object
+            pointerCache[index].clientX = e.clientX;
+            pointerCache[index].clientY = e.clientY;
+        }
+
+        if (pointerCache.length === 2) {
+            hasDragged = true; 
+            const currentDistance = getDistance(pointerCache[0], pointerCache[1]);
+            
+            if (initialPinchDistance > 0) {
+                const scaleDiff = currentDistance / initialPinchDistance;
+                let newScale = currentScale * scaleDiff;
+                
+                currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+                initialPinchDistance = currentDistance; 
+                
+                clampPan();
+                applyCameraTransform();
+            }
+        } else if (pointerCache.length === 1 && isPanning) {
+            if (Math.abs(e.clientX - startMouseX) > 5 || Math.abs(e.clientY - startMouseY) > 5) {
+                hasDragged = true;
+            }
+            
+            panX = startPanX + (e.clientX - startMouseX) / currentScale;
+            panY = startPanY + (e.clientY - startMouseY) / currentScale;
+            
+            clampPan();
+            applyCameraTransform();
+        }
+    });
+
+    const removePointer = (e) => {
+        pointerCache = pointerCache.filter(p => p.pointerId !== e.pointerId);
+        
+        if (pointerCache.length < 2) {
+            initialPinchDistance = -1;
+        }
+        
+        if (pointerCache.length === 1) {
+            startMouseX = pointerCache[0].clientX;
+            startMouseY = pointerCache[0].clientY;
+            startPanX = panX;
+            startPanY = panY;
+            isPanning = true;
+        } else if (pointerCache.length === 0) {
+            isPanning = false;
+        }
+    };
+
+    outer.addEventListener("pointerup", removePointer);
+    outer.addEventListener("pointercancel", removePointer);
+    outer.addEventListener("pointerout", removePointer);
+    
+    outer.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const zoomFactor = -e.deltaY * 0.002;
+        currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, currentScale + zoomFactor));
+        clampPan();
+        applyCameraTransform();
+    }, { passive: false });
+}
 
     function render() {
         const container = document.getElementById("board");
