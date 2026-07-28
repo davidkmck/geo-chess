@@ -12,9 +12,15 @@
     // History & Move Log Variables
     let history = [], moveLog = [], currentIndex = 0;
 
-    // Camera Variables
-    let zoomPreset = 1, panX = 0, panY = 0, startMouseX = 0, startMouseY = 0, startPanX = 0, startPanY = 0, isPanning = false;
+    // Camera Variables (Updated for Pinch-to-Zoom)
+    let currentScale = 1;
+    const MIN_SCALE = 1, MAX_SCALE = 4;
+    let panX = 0, panY = 0, startMouseX = 0, startMouseY = 0, startPanX = 0, startPanY = 0, isPanning = false;
     let isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
+    
+    // Pinch-to-zoom specific state
+    let pointerCache = [];
+    let initialPinchDistance = -1;
 
     // Tracks the AI's own previous move, so it can be discouraged from immediately undoing it.
     let aiLastMove = null;
@@ -85,50 +91,49 @@
     }
     */
     // Dynamic Board Generator
-function freshBoard() {
-    const whiteStart = document.getElementById("white-start-select")?.value || "topos";
-    const blackStart = document.getElementById("black-start-select")?.value || "topos";
-    const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
-    
-    // We only need the standard 8 pieces
-    const coreBackRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
+    function freshBoard() {
+        const whiteStart = document.getElementById("white-start-select")?.value || "topos";
+        const blackStart = document.getElementById("black-start-select")?.value || "topos";
+        const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+        
+        // We only need the standard 8 pieces
+        const coreBackRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
 
-    // DEPLOY BLACK
-    if (blackStart === "classic") {
-        for (let x = 0; x < 8; x++) {
-            b[3][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
-            b[4][x + 3] = { type: "P", color: "b", moved: false };
+        // DEPLOY BLACK
+        if (blackStart === "classic") {
+            for (let x = 0; x < 8; x++) {
+                b[3][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
+                b[4][x + 3] = { type: "P", color: "b", moved: false };
+            }
+        } else {
+            // Topos deployment: 14 pawns across the front, 8 core pieces centered in the back
+            for (let x = 0; x < 14; x++) {
+                b[1][x] = { type: "P", color: "b", moved: false };
+            }
+            for (let x = 0; x < 8; x++) {
+                b[0][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
+            }
         }
-    } else {
-        // Topos deployment: 14 pawns across the front, 8 core pieces centered in the back
-        for (let x = 0; x < 14; x++) {
-            b[1][x] = { type: "P", color: "b", moved: false };
+
+        // DEPLOY WHITE
+        if (whiteStart === "classic") {
+            for (let x = 0; x < 8; x++) {
+                b[10][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
+                b[9][x + 3] = { type: "P", color: "w", moved: false };
+            }
+        } else {
+            // Topos deployment: 14 pawns across the front, 8 core pieces centered in the back
+            for (let x = 0; x < 14; x++) {
+                b[12][x] = { type: "P", color: "w", moved: false };
+            }
+            for (let x = 0; x < 8; x++) {
+                b[13][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
+            }
         }
-        for (let x = 0; x < 8; x++) {
-            b[0][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
-        }
+
+        return b;
     }
-
-    // DEPLOY WHITE
-    if (whiteStart === "classic") {
-        for (let x = 0; x < 8; x++) {
-            b[10][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
-            b[9][x + 3] = { type: "P", color: "w", moved: false };
-        }
-    } else {
-        // Topos deployment: 14 pawns across the front, 8 core pieces centered in the back
-        for (let x = 0; x < 14; x++) {
-            b[12][x] = { type: "P", color: "w", moved: false };
-        }
-        for (let x = 0; x < 8; x++) {
-            b[13][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
-        }
-    }
-
-    return b;
-}
     
-
     function cloneBoard(src) { return src.map(row => row.map(cell => cell ? { ...cell } : null)); }
 
     // History Management
@@ -144,7 +149,7 @@ function freshBoard() {
         updateUndoRedoButtons();
     }
 
-function jumpToTimelineIndex(idx) {
+    function jumpToTimelineIndex(idx) {
         if (idx < 0 || idx >= history.length) return;
         currentIndex = idx;
         const stateData = history[currentIndex];
@@ -208,41 +213,41 @@ function jumpToTimelineIndex(idx) {
 
                 // ...^^^  existing Knight/King directional loop ...
 
-        // NEW: Castling Move Generation
-        if (p.type === "K" && !p.moved) {
-            // Check both directions (Kingside = 1, Queenside = -1)
-            [1, -1].forEach(step => {
-                let pathClear = true;
-                let foundRook = false;
-                
-                // Scan out to the edge of the board in this direction
-                for (let x = f + step; x >= 0 && x < SIZE; x += step) {
-                    const sq = bMatrix[r][x];
-                    
-                    // If we hit an impassable mountain, path is blocked
-                    if (isImpassable(terrain(r, x))) {
-                        pathClear = false;
-                        break;
-                    }
-                    
-                    if (sq) {
-                        // If it's our unmoved Rook, we can castle!
-                        if (sq.type === "R" && !sq.moved && sq.color === p.color) {
-                            foundRook = true;
-                        } else {
-                            // Any other piece blocks the path
-                            pathClear = false;
+                // NEW: Castling Move Generation
+                if (p.type === "K" && !p.moved) {
+                    // Check both directions (Kingside = 1, Queenside = -1)
+                    [1, -1].forEach(step => {
+                        let pathClear = true;
+                        let foundRook = false;
+                        
+                        // Scan out to the edge of the board in this direction
+                        for (let x = f + step; x >= 0 && x < SIZE; x += step) {
+                            const sq = bMatrix[r][x];
+                            
+                            // If we hit an impassable mountain, path is blocked
+                            if (isImpassable(terrain(r, x))) {
+                                pathClear = false;
+                                break;
+                            }
+                            
+                            if (sq) {
+                                // If it's our unmoved Rook, we can castle!
+                                if (sq.type === "R" && !sq.moved && sq.color === p.color) {
+                                    foundRook = true;
+                                } else {
+                                    // Any other piece blocks the path
+                                    pathClear = false;
+                                }
+                                break; 
+                            }
                         }
-                        break; 
-                    }
+                        
+                        // If the path is empty and ends in an unmoved rook, add the 2-square jump
+                        if (pathClear && foundRook) {
+                            moves.push({ r: r, f: f + (2 * step) });
+                        }
+                    });
                 }
-                
-                // If the path is empty and ends in an unmoved rook, add the 2-square jump
-                if (pathClear && foundRook) {
-                    moves.push({ r: r, f: f + (2 * step) });
-                }
-            });
-        }
             });
         }
         return moves;
@@ -317,7 +322,6 @@ function jumpToTimelineIndex(idx) {
         });
     }
     
-
     // Real, legality-filtered moves for an entire side. Used for actual gameplay (human clicks,
     // AI's final move choice) and for checkmate/stalemate detection - NOT used inside the AI's
     // deep search tree, where the faster pseudo-legal generateAllLegalMoves is used instead.
@@ -334,81 +338,6 @@ function jumpToTimelineIndex(idx) {
     }
 
     // ---------------------------------------------------------------------------------
-
-    /*
-function makeMove(from, to) {
-        const p = board[from.r][from.f];
-        const captured = board[to.r][to.f];
-        
-        // Prepare the base move notation
-        let moveString = `${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`;
-
-        board[to.r][to.f] = { ...p, moved: true };
-        board[from.r][from.f] = null;
-        
-        // --- NEW: Pawn Promotion (Auto-Queen) ---
-        if (p.type === "P") {
-            const promotionRank = p.color === "w" ? 0 : SIZE - 1;
-            if (to.r === promotionRank) {
-                board[to.r][to.f].type = "Q"; // Transform into a Queen
-                moveString += "=Q";           // Append promotion to the log
-            }
-        }
-        
-        // Log Move
-        moveLog.push(moveString);
-        
-        lastMoveSource = { ...from };
-        lastMoveTarget = { ...to };
-        
-        if (captured && captured.type === "K") {
-            gameOver = true;
-            gameOverText = p.color === "w" ? "White Wins by Regicide!" : "Black Wins by Regicide!";
-            saveState();
-            render();
-            return;
-        }
-
-        turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
-        
-        // properly detect checkmate (no legal moves + king attacked) and stalemate
-        // (no legal moves + king safe), instead of relying on illegal moves + regicide.
-        const nextInCheck = isInCheck(turn, board);
-        const nextLegalMoves = computeLegalMoves(turn, board);
-        if (nextLegalMoves.length === 0) {
-            gameOver = true;
-            if (nextInCheck) {
-                gameOverText = turn === "w" ? "Black Wins by Checkmate!" : "White Wins by Checkmate!";
-            } else {
-                gameOverText = "Draw by Stalemate!";
-            }
-        }
-
-        saveState();
-        render();
-
-        // Trigger AI if it's black's turn and the game is still going
-        if (aiEnabled && turn === "b" && !gameOver) triggerAI();
-
-
-        if (gameOver) {
-            // turn off the white/black indicator light
-            document.getElementById("node-w").classList.remove("active-glow");
-            document.getElementById("node-b").classList.remove("active-glow");
-            
-            const winOverlay = document.getElementById("win-overlay");
-            const winTitle = document.getElementById("win-title");
-            
-            if (winOverlay && winTitle) {
-                // Update the text to your dynamically generated end-game message
-                winTitle.innerText = gameOverText; 
-                // Remove the 'hidden' class to display the modal
-                winOverlay.classList.remove("hidden"); 
-            }
-        }
-
-    }
-*/
 
     /// new make move ////
     function makeMove(from, to) {
@@ -502,52 +431,7 @@ function makeMove(from, to) {
         }
     }
 
-    /// new make move ////
-
-    /*
-    function makeMove(from, to) {
-        const p = board[from.r][from.f];
-        const captured = board[to.r][to.f];
-        
-        // Log Move
-        moveLog.push(`${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`);
-
-        board[to.r][to.f] = { ...p, moved: true };
-        board[from.r][from.f] = null;
-        
-        lastMoveSource = { ...from };
-        lastMoveTarget = { ...to };
-        
-        if (captured && captured.type === "K") {
-            gameOver = true;
-            gameOverText = p.color === "w" ? "White Wins by Regicide!" : "Black Wins by Regicide!";
-            saveState();
-            render();
-            return;
-        }
-
-        turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
-        
-        // FIX 3: properly detect checkmate (no legal moves + king attacked) and stalemate
-        // (no legal moves + king safe), instead of relying on illegal moves + regicide.
-        const nextInCheck = isInCheck(turn, board);
-        const nextLegalMoves = computeLegalMoves(turn, board);
-        if (nextLegalMoves.length === 0) {
-            gameOver = true;
-            if (nextInCheck) {
-                gameOverText = turn === "w" ? "Black Wins by Checkmate!" : "White Wins by Checkmate!";
-            } else {
-                gameOverText = "Draw by Stalemate!";
-            }
-        }
-
-        saveState();
-        render();
-        if (aiEnabled && turn === "b" && !gameOver) triggerAI();
-    }
-    */
-
-function triggerAI() {
+    function triggerAI() {
         if (gameOver) return;
         aiThinking = true;
         setTimeout(() => {
@@ -585,55 +469,116 @@ function triggerAI() {
         }, 50);
     }
 
-    // Camera Application Engine
+    // ---------------------------------------------------------------------------------
+    // CAMERA APPLICATION ENGINE (Updated)
+    // ---------------------------------------------------------------------------------
+    
+    // Extracted clamping function so both pointer and wheel events can use it
+    function clampPan() {
+        const outer = document.getElementById("board-outer");
+        if (!outer) return;
+        const w = outer.offsetWidth;
+        const h = outer.offsetHeight;
+        const maxTranslateX = (w * currentScale - w) / currentScale;
+        const maxTranslateY = (h * currentScale - h) / currentScale;
+
+        panX = Math.min(0, Math.max(-maxTranslateX, panX));
+        panY = Math.min(0, Math.max(-maxTranslateY, panY));
+    }
+
     function applyCameraTransform() {
         const boardEl = document.getElementById("board");
         if (!boardEl) return;
-        const scales = [1, 1.75, 3.5];
-        boardEl.style.transform = `scale(${scales[zoomPreset - 1]}) translate(${panX}px, ${panY}px)`;
+        
+        boardEl.style.transformOrigin = "0 0";
+        boardEl.style.transform = `scale(${currentScale}) translate(${panX}px, ${panY}px)`;
     }
 
     function setupPanning() {
         const outer = document.getElementById("board-outer");
         if (!outer) return;
 
+        function getDistance(p1, p2) {
+            return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+        }
+
         outer.addEventListener("pointerdown", (e) => {
-            if (zoomPreset === 1) return;
-            isPanning = true;
-            startMouseX = e.clientX;
-            startMouseY = e.clientY;
-            startPanX = panX;
-            startPanY = panY;
-            outer.setPointerCapture(e.pointerId);
+            pointerCache.push(e);
+
+            if (pointerCache.length === 1) {
+                // Start panning
+                isPanning = true;
+                startMouseX = e.clientX;
+                startMouseY = e.clientY;
+                startPanX = panX;
+                startPanY = panY;
+                outer.setPointerCapture(e.pointerId);
+            } else if (pointerCache.length === 2) {
+                // Start pinching, stop panning
+                isPanning = false;
+                initialPinchDistance = getDistance(pointerCache[0], pointerCache[1]);
+            }
         });
 
         outer.addEventListener("pointermove", (e) => {
-            if (!isPanning) return;
-            const scales = [1, 1.75, 3.5];
-            const scaleFactor = scales[zoomPreset - 1] || 1.0;
+            const index = pointerCache.findIndex(p => p.pointerId === e.pointerId);
+            if (index !== -1) pointerCache[index] = e;
 
-            panX = startPanX + (e.clientX - startMouseX) / scaleFactor;
-            panY = startPanY + (e.clientY - startMouseY) / scaleFactor;
+            if (pointerCache.length === 2) {
+                // Handle Pinch Zoom
+                const currentDistance = getDistance(pointerCache[0], pointerCache[1]);
+                
+                if (initialPinchDistance > 0) {
+                    const scaleDiff = currentDistance / initialPinchDistance;
+                    let newScale = currentScale * scaleDiff;
+                    
+                    currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+                    initialPinchDistance = currentDistance; 
+                    
+                    clampPan();
+                    applyCameraTransform();
+                }
+            } else if (pointerCache.length === 1 && isPanning) {
+                // Handle standard 1-finger Pan
+                panX = startPanX + (e.clientX - startMouseX) / currentScale;
+                panY = startPanY + (e.clientY - startMouseY) / currentScale;
+                
+                clampPan();
+                applyCameraTransform();
+            }
+        });
 
-            const w = outer.offsetWidth;
-            const h = outer.offsetHeight;
-            const maxTranslateX = (w * scaleFactor - w) / scaleFactor;
-            const maxTranslateY = (h * scaleFactor - h) / scaleFactor;
+        const removePointer = (e) => {
+            pointerCache = pointerCache.filter(p => p.pointerId !== e.pointerId);
+            
+            if (pointerCache.length < 2) {
+                initialPinchDistance = -1;
+            }
+            
+            if (pointerCache.length === 1) {
+                startMouseX = pointerCache[0].clientX;
+                startMouseY = pointerCache[0].clientY;
+                startPanX = panX;
+                startPanY = panY;
+                isPanning = true;
+            } else if (pointerCache.length === 0) {
+                isPanning = false;
+            }
+        };
 
-            panX = Math.min(0, Math.max(-maxTranslateX, panX));
-            panY = Math.min(0, Math.max(-maxTranslateY, panY));
-
+        outer.addEventListener("pointerup", removePointer);
+        outer.addEventListener("pointercancel", removePointer);
+        outer.addEventListener("pointerout", removePointer);
+        
+        // Desktop Mouse Wheel Support
+        outer.addEventListener("wheel", (e) => {
+            e.preventDefault(); // Prevents native page scrolling
+            const zoomFactor = -e.deltaY * 0.002;
+            currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, currentScale + zoomFactor));
+            
+            clampPan();
             applyCameraTransform();
-        });
-
-        outer.addEventListener("pointerup", (e) => {
-            isPanning = false;
-            outer.releasePointerCapture(e.pointerId);
-        });
-
-        outer.addEventListener("pointercancel", () => {
-            isPanning = false;
-        });
+        }, { passive: false });
     }
 
     // FIX 2: automatically show the 8x8 core guide whenever either side deploys "classic".
@@ -747,154 +692,19 @@ function triggerAI() {
             listEl.appendChild(li);
         });
     }
-    /*
-    function renderMoveLog() {
-        const listEl = document.getElementById("move-log-list");
-        if (!listEl) return;
-        
-        let copyBtn = document.getElementById("copy-history-btn");
-        if (!copyBtn) {
-            copyBtn = document.createElement("button");
-            copyBtn.id = "copy-history-btn";
-            copyBtn.className = "btn-ghost"; 
-            copyBtn.textContent = "📋 Copy History";
-            copyBtn.addEventListener("click", () => {
-                const historyText = moveLog.map((move, idx) => `${idx + 1}. ${move}`).join('\n');
-                navigator.clipboard.writeText(historyText).catch(err => console.error('Failed to copy: ', err));
-            });
-            listEl.parentNode.insertBefore(copyBtn, listEl); 
-        }
 
-        listEl.innerHTML = "";
-        moveLog.forEach((move, idx) => {
-            const li = document.createElement("li");
-            li.textContent = `${idx + 1}. ${move}`;
-            li.style.cursor = "pointer";
-            if (idx === currentIndex - 1) li.style.fontWeight = "bold"; 
-            li.addEventListener("click", () => jumpToTimelineIndex(idx + 1));
-            listEl.appendChild(li);
-        });
-    }
-
-    */
-    
-
-function render() {
-    const container = document.getElementById("board");
-    if (!container) return;
-    container.innerHTML = "";
-    applyCameraTransform();
-    
-    for (let viewR = 0; viewR < SIZE; viewR++) {
-        for (let viewF = 0; viewF < SIZE; viewF++) {
-            // Determine logical board coordinates based on flip state
-            const r = isFlipped ? SIZE - 1 - viewR : viewR;
-            const f = isFlipped ? SIZE - 1 - viewF : viewF;
-            
-            const cell = document.createElement("div");
-            cell.className = `cell ${(r + f) % 2 === 0 ? 'light' : 'dark'} terrain-${terrain(r, f)}`;
-            
-            // Highlight last move targets
-            if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cell.classList.add("last-move-source");
-            if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cell.classList.add("last-move-target");
-
-            if (selected && selected.r === r && selected.f === f) {
-                cell.classList.add("selected");
-            }
-            
-            if (legalTargets.some(t => t.r === r && t.f === f)) {
-                const hasEnemy = board[r][f] && board[r][f].color !== turn;
-                cell.classList.add(hasEnemy ? "legal-capture" : "legal-move");
-            }
-
-            const p = board[r][f];
-            if (p) {
-                const piece = document.createElement("span");
-                piece.className = `piece ${p.color === 'w' ? 'white' : 'black'}`;
-                piece.textContent = PIECE_SYMBOLS[p.color][p.type];
-                cell.appendChild(piece);
-            }
-            
-            cell.onclick = () => {
-                if (gameOver || aiThinking || (aiEnabled && turn === "b")) return;
-                if (selected && legalTargets.some(t => t.r === r && t.f === f)) {
-                    makeMove(selected, {r, f});
-                } else if (board[r][f] && board[r][f].color === turn) { 
-                    selected = {r, f}; 
-                    // FIX 3: only offer moves that don't leave your own king in check.
-                    legalTargets = getLegalMoves(r, f, board); 
-                    render(); 
-                } else {
-                    selected = null;
-                    legalTargets = [];
-                    render();
-                }
-            };
-            container.appendChild(cell);
-        }
-    }
-
-    // FIX 3: highlight the king that is currently in check.
-    if (isInCheck(turn, board)) {
-        for (let checkR = 0; checkR < SIZE; checkR++) {
-            for (let checkF = 0; checkF < SIZE; checkF++) {
-                const p = board[checkR][checkF];
-                if (p && p.type === "K" && p.color === turn) {
-                    // Match the DOM index with the flipped state
-                    const renderR = isFlipped ? SIZE - 1 - checkR : checkR;
-                    const renderF = isFlipped ? SIZE - 1 - checkF : checkF;
-                    const idx = renderR * SIZE + renderF;
-                    container.children[idx]?.classList.add("king-in-check");
-                }
-            }
-        }
-    }
-    
-    const nodeW = document.getElementById("node-w");
-    const nodeB = document.getElementById("node-b");
-    if (nodeW && nodeB) {
-        nodeW.classList.toggle("active-glow", turn === 'w');
-        nodeB.classList.toggle("active-glow", turn === 'b');
-    }
-
-    const overlay = document.getElementById("win-overlay");
-    const winTitle = document.getElementById("win-title");
-    if (overlay && winTitle) {
-        if (gameOver) {
-            winTitle.textContent = gameOverText;
-            overlay.classList.remove("hidden");
-        } else {
-            overlay.classList.add("hidden");
-        }
-    }
-
-    renderMoveLog();
-
-
-    // for showing end of game
-    const statusEl = document.getElementById("status-display"); 
-    
-    if (statusEl) {
-        if (gameOver) {
-            // Prominently display the checkmate/regicide text
-            statusEl.innerText = gameOverText;
-            statusEl.style.color = "red"; // Optional: make it pop
-        } else {
-            // Otherwise, just show the normal turn indicator
-            statusEl.innerText = turn === "w" ? "White's Turn" : "Black's Turn";
-            statusEl.style.color = "black";
-        }
-    }
-}
-    /*
     function render() {
         const container = document.getElementById("board");
         if (!container) return;
         container.innerHTML = "";
         applyCameraTransform();
         
-        for (let r = 0; r < SIZE; r++) {
-            for (let f = 0; f < SIZE; f++) {
+        for (let viewR = 0; viewR < SIZE; viewR++) {
+            for (let viewF = 0; viewF < SIZE; viewF++) {
+                // Determine logical board coordinates based on flip state
+                const r = isFlipped ? SIZE - 1 - viewR : viewR;
+                const f = isFlipped ? SIZE - 1 - viewF : viewF;
+                
                 const cell = document.createElement("div");
                 cell.className = `cell ${(r + f) % 2 === 0 ? 'light' : 'dark'} terrain-${terrain(r, f)}`;
                 
@@ -940,11 +750,14 @@ function render() {
 
         // FIX 3: highlight the king that is currently in check.
         if (isInCheck(turn, board)) {
-            for (let r = 0; r < SIZE; r++) {
-                for (let f = 0; f < SIZE; f++) {
-                    const p = board[r][f];
+            for (let checkR = 0; checkR < SIZE; checkR++) {
+                for (let checkF = 0; checkF < SIZE; checkF++) {
+                    const p = board[checkR][checkF];
                     if (p && p.type === "K" && p.color === turn) {
-                        const idx = r * SIZE + f;
+                        // Match the DOM index with the flipped state
+                        const renderR = isFlipped ? SIZE - 1 - checkR : checkR;
+                        const renderF = isFlipped ? SIZE - 1 - checkF : checkF;
+                        const idx = renderR * SIZE + renderF;
                         container.children[idx]?.classList.add("king-in-check");
                     }
                 }
@@ -970,22 +783,35 @@ function render() {
         }
 
         renderMoveLog();
-    }
 
-    */
+        // for showing end of game
+        const statusEl = document.getElementById("status-display"); 
+        
+        if (statusEl) {
+            if (gameOver) {
+                // Prominently display the checkmate/regicide text
+                statusEl.innerText = gameOverText;
+                statusEl.style.color = "red"; // Optional: make it pop
+            } else {
+                // Otherwise, just show the normal turn indicator
+                statusEl.innerText = turn === "w" ? "White's Turn" : "Black's Turn";
+                statusEl.style.color = "black";
+            }
+        }
+    }
 
     function init() {
         board = freshBoard();
         setupPanning();
         
-        document.getElementById("zoom-slider")?.addEventListener("input", (e) => { 
-            zoomPreset = parseInt(e.target.value); 
-            panX = 0; panY = 0; 
-            render(); 
-        });
+        // NOTE: The #zoom-slider event listener has been completely removed in 
+        // favor of the multi-touch pinch mechanics and desktop mouse wheel support!
+
         document.getElementById("btn-reset")?.addEventListener("click", () => { 
             board = freshBoard(); turn = "w"; selected = null; legalTargets = []; gameOver = false;
             lastMoveSource = null; lastMoveTarget = null; history = []; moveLog = []; aiLastMove = null;
+            // Also reset camera transforms
+            currentScale = 1; panX = 0; panY = 0;
             saveState(); render(); 
         });
     
