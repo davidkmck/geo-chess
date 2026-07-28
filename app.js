@@ -590,6 +590,10 @@ function triggerAI() {
         const boardEl = document.getElementById("board");
         if (!boardEl) return;
         const scales = [1, 1.75, 3.5];
+
+        // NEW: Force transform origin to top-left. 
+    // This allows your negative-only clamping math to work flawlessly.
+    boardEl.style.transformOrigin = "0 0";
         boardEl.style.transform = `scale(${scales[zoomPreset - 1]}) translate(${panX}px, ${panY}px)`;
     }
 
