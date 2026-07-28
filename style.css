@@ -158,10 +158,21 @@ body {
     50% { opacity: 1; }
 }
 
+/*
 .piece { 
     font-size: 28px; 
     cursor: grab; 
     user-select: none; 
+    z-index: 3; 
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; 
+}
+*/
+
+.piece { 
+    font-size: clamp(14px, 5.5vw, 28px); 
+    cursor: grab; 
+    user-select: none; 
+    -webkit-user-drag: none; /* CRITICAL: Prevents native text drag interference */
     z-index: 3; 
     font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; 
 }
