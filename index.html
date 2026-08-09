@@ -2,323 +2,95 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topos Chess - 14x14 Strategy with Terrain</title>
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
-            --text-color: #f8fafc;
-            --text-dim: #94a3b8;
-            --accent: #38bdf8;
-            --accent-hover: #0ea5e9;
-            --danger: #f43f5e;
-            --border: #334155;
-            
-            /* Board Terrain Colors */
-            --sq-light: #e2e8f0;
-            --sq-dark: #94a3b8;
-            --sq-light-sel: #7dd3fc;
-            --sq-dark-sel: #38bdf8;
-            --sq-light-hl: #bae6fd;
-            --sq-dark-hl: #0284c7;
-
-            --mountain: #475569;
-            --mountain-border: #1e293b;
-            --lake: #0284c7;
-            --lake-border: #0369a1;
-            --river: #38bdf8;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            padding: 12px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 12px;
-            width: 100%;
-            max-width: 750px;
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            color: var(--accent);
-            margin-bottom: 4px;
-        }
-
-        .subtitle {
-            font-size: 0.85rem;
-            color: var(--text-dim);
-        }
-
-        .game-container {
-            width: 100%;
-            max-width: 750px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .control-panel {
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex: 1;
-            min-width: 130px;
-        }
-
-        label {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        select, button {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 0.9rem;
-            outline: none;
-            transition: all 0.2s;
-            cursor: pointer;
-            width: 100%;
-        }
-
-        select:hover, button:hover {
-            border-color: var(--accent);
-        }
-
-        button.primary {
-            background-color: var(--accent);
-            color: #0f172a;
-            font-weight: 600;
-            border: none;
-        }
-
-        button.primary:hover {
-            background-color: var(--accent-hover);
-        }
-
-        .status-bar {
-            background-color: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .board-wrapper {
-            width: 100%;
-            aspect-ratio: 1;
-            background-color: var(--panel-bg);
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            padding: 8px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            display: grid;
-            grid-template-columns: repeat(14, 1fr);
-            grid-template-rows: repeat(14, 1fr);
-            gap: 0;
-            position: relative;
-        }
-
-        .square {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: clamp(1.1rem, 4vw, 2rem);
-            cursor: pointer;
-            font-weight: normal;
-        }
-
-        .square.light { background-color: var(--sq-light); color: #1e293b; }
-        .square.dark { background-color: var(--sq-dark); color: #1e293b; }
-
-        .square.selected.light { background-color: var(--sq-light-sel); }
-        .square.selected.dark { background-color: var(--sq-dark-sel); }
-
-        .square.highlight.light { background-color: var(--sq-light-hl); }
-        .square.highlight.dark { background-color: var(--sq-dark-hl); }
-
-        /* Terrain Renderings */
-        .terrain-mountain {
-            position: absolute;
-            inset: 3px;
-            background: var(--mountain);
-            border: 2px solid var(--mountain-border);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
-            z-index: 1;
-        }
-
-        .terrain-lake {
-            position: absolute;
-            inset: 3px;
-            background: var(--lake);
-            border: 2px solid var(--lake-border);
-            border-radius: 50%;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-            z-index: 1;
-        }
-
-        .terrain-river {
-            position: absolute;
-            inset: 0px;
-            background: var(--river);
-            opacity: 0.85;
-            z-index: 1;
-        }
-
-        .piece {
-            position: relative;
-            z-index: 2;
-            transition: transform 0.1s ease;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-        }
-
-        .piece[data-color="w"] {
-            color: #ffffff;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-        }
-
-        .piece[data-color="b"] {
-            color: #0f172a;
-            text-shadow: 0 1px 2px rgba(255,255,255,0.4);
-        }
-
-        .move-dot {
-            position: absolute;
-            width: 30%;
-            height: 30%;
-            background-color: rgba(15, 23, 42, 0.35);
-            border-radius: 50%;
-            z-index: 3;
-            pointer-events: none;
-        }
-
-        .capture-ring {
-            position: absolute;
-            inset: 3px;
-            border: 3px solid rgba(244, 63, 94, 0.6);
-            border-radius: 50%;
-            z-index: 3;
-            pointer-events: none;
-        }
-
-        .legend {
-            display: flex;
-            justify-content: center;
-            gap: 16px;
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            margin-top: 4px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .legend-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 3px;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Topos Chess - Strategy with Terrain</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
-
-    <header>
-        <h1>Topos Chess</h1>
-        <div class="subtitle">14x14 Strategy with Obstacles & Terrain</div>
+    <header class="controls-header">
+        <div class="header-left">
+            <h1>Topos Chess</h1>
+            <button id="btn-zen" class="btn-ghost">👁️ Zen</button>
+            <button id="btn-reset" class="btn-ghost">🔄 Reset</button>
+            <button id="btn-flip" class="btn-ghost">🔁 Flip</button>
+        </div>
     </header>
+    <main class="game-layout">
+        <div class="board-container-wrapper">
+            <div class="left-control-stack">
+                <div id="node-b" class="turn-indicator-node" title="Black's Turn"></div>
+                <div id="node-w" class="turn-indicator-node active-glow" title="White's Turn"></div>
+            </div>
+            <div class="board-outer" id="board-outer">
+                <div class="board" id="board"></div>
 
-    <div class="game-container">
-        <div class="control-panel">
-            <div class="control-group">
-                <label for="landmarkSelect">Terrain / Landmark</label>
-                <select id="landmarkSelect">
-                    <option value="none">Flat Plains (Standard)</option>
-                    <option value="riverside" selected>Riverside (Classic)</option>
-                    <option value="twinHills">Twin Hills (Classic)</option>
-                    <option value="oasis">The Oasis (Classic)</option>
-                    <option value="archipelago">Archipelago</option>
-                    <option value="greatRidge">The Great Ridge</option>
-                    <option value="crossroads">Crossroads River</option>
-                    <option value="canyon">The Canyon</option>
-                    <option value="islands">Scatter Isles</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="aiToggle">Opponent</label>
-                <select id="aiToggle">
-                    <option value="none">Two Player</option>
-                    <option value="easy">AI (Easy)</option>
-                    <option value="medium" selected>AI (Medium)</option>
-                </select>
-            </div>
-            <div class="control-group" style="flex: 0 0 auto;">
-                <label>&nbsp;</label>
-                <button class="primary" id="newGameBtn">New Game</button>
+                <div id="win-overlay" class="win-overlay hidden">
+                    <div class="win-modal-content">
+                        <h2 id="win-title">White Wins!</h2>
+                        <button id="btn-another-match" class="btn-primary">Play Again</button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="status-bar">
-            <span id="turnIndicator">White's Turn</span>
-            <span id="gameMessage"></span>
+        <div class="game-panels">
+            <section class="panel-card">
+                <h3>Match Configuration</h3>
+                <div class="control-group">
+                    <label for="terrain-select">Map Terrain:</label>
+                    <select id="terrain-select">
+                        <option value="default">Default</option>
+                        <option value="alternative">Alternative</option>
+                        <option value="none">None (Classic)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="white-start-select">White Deployment:</label>
+                    <select id="white-start-select">
+                        <option value="topos">Topos (14x14)</option>
+                        <option value="classic">Classic (8x8)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="black-start-select">Black Deployment:</label>
+                    <select id="black-start-select">
+                        <option value="topos">Topos (14x14)</option>
+                        <option value="classic">Classic (8x8)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label><input type="checkbox" id="inner-board-toggle"> Show 8x8 Core</label>
+                </div>
+
+                <div class="control-group">
+                    <label><input type="checkbox" id="ai-toggle" checked> Enable AI</label>
+                </div>
+                <div class="control-group">
+                    <label for="ai-depth-select">AI Difficulty:</label>
+                    <select id="ai-depth-select">
+                        <option value="1">Easy</option>
+                        <option value="2" selected>Medium</option>
+                        <option value="3">Hard</option>
+                        <option value="4">Expert (slower)</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="panel-card">
+                <h3>Move History</h3>
+                <div class="control-group" style="margin-bottom: 15px;">
+                    <button id="btn-undo" class="btn-ghost" disabled>↩️ Undo</button>
+                    <button id="btn-redo" class="btn-ghost" disabled>↪️ Redo</button>
+                </div>
+                <ul id="move-log-list" style="list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; font-family: monospace; color: #ccc; line-height: 1.6;"></ul>
+            </section>
         </div>
-
-        <div class="board-wrapper" id="board"></div>
-
-        <div class="legend">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--mountain)"></div> Mountain (Impassable)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--lake)"></div> Lake (Impassable)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--river)"></div> River (Crossable)</div>
-        </div>
-    </div>
-
+    </main>
+    
+    <script src="ai.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
