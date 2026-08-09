@@ -5,45 +5,47 @@ const PIECES = {
 };
 
 // Terrain Types: 'mountain', 'lake', 'river'
-// Movement Rules: Mountains & Lakes block all piece movement and line-of-sight. Rivers are crossable.
+// Rule: Mountains & Lakes block movement and line of sight. Rivers are crossable.
 let terrainMap = {}; 
 
 const LANDMARKS = {
     none: {},
     riverside: {
-        'd3': 'river', 'e3': 'river',
-        'd4': 'river', 'e4': 'river',
-        'c5': 'river', 'f5': 'river'
+        'f6': 'river', 'g6': 'river', 'h6': 'river', 'i6': 'river',
+        'f7': 'river', 'g7': 'river', 'h7': 'river', 'i7': 'river',
+        'e8': 'river', 'j8': 'river'
     },
     twinHills: {
-        'c3': 'mountain', 'f3': 'mountain',
-        'c6': 'mountain', 'f6': 'mountain'
+        'e5': 'mountain', 'j5': 'mountain',
+        'e10': 'mountain', 'j10': 'mountain'
     },
     oasis: {
-        'd4': 'lake', 'e4': 'lake',
-        'd5': 'river', 'e5': 'river'
+        'f7': 'lake', 'g7': 'lake', 'h7': 'lake', 'i7': 'lake',
+        'f8': 'river', 'g8': 'river', 'h8': 'river', 'i8': 'river'
     },
     archipelago: {
-        'c3': 'lake', 'f3': 'lake',
-        'd6': 'lake', 'e6': 'lake',
-        'a4': 'river', 'h5': 'river'
+        'd5': 'lake', 'k5': 'lake',
+        'f10': 'lake', 'i10': 'lake',
+        'a7': 'river', 'n8': 'river'
     },
     greatRidge: {
-        'd2': 'mountain', 'd3': 'mountain', 'd4': 'mountain', 'd5': 'mountain',
-        'e4': 'mountain', 'e5': 'mountain', 'e6': 'mountain', 'e7': 'mountain'
+        'f4': 'mountain', 'f5': 'mountain', 'f6': 'mountain', 'f7': 'mountain', 'f8': 'mountain',
+        'i7': 'mountain', 'i8': 'mountain', 'i9': 'mountain', 'i10': 'mountain', 'i11': 'mountain'
     },
     crossroads: {
-        'd1': 'river', 'd2': 'river', 'd3': 'river', 'd4': 'river', 'd5': 'river', 'd6': 'river', 'd7': 'river', 'd8': 'river',
-        'a4': 'river', 'b4': 'river', 'c4': 'river', 'e4': 'river', 'f4': 'river', 'g4': 'river', 'h4': 'river'
+        'g1': 'river', 'g2': 'river', 'g3': 'river', 'g4': 'river', 'g5': 'river', 'g6': 'river', 'g7': 'river', 
+        'g8': 'river', 'g9': 'river', 'g10': 'river', 'g11': 'river', 'g12': 'river', 'g13': 'river', 'g14': 'river',
+        'a7': 'river', 'b7': 'river', 'c7': 'river', 'd7': 'river', 'e7': 'river', 'f7': 'river', 
+        'h7': 'river', 'i7': 'river', 'j7': 'river', 'k7': 'river', 'l7': 'river', 'm7': 'river', 'n7': 'river'
     },
     canyon: {
-        'c2': 'mountain', 'c3': 'mountain', 'c4': 'mountain', 'c5': 'mountain',
-        'f3': 'mountain', 'f4': 'mountain', 'f5': 'mountain', 'f6': 'mountain'
+        'e3': 'mountain', 'e4': 'mountain', 'e5': 'mountain', 'e6': 'mountain', 'e7': 'mountain', 'e8': 'mountain',
+        'j6': 'mountain', 'j7': 'mountain', 'j8': 'mountain', 'j9': 'mountain', 'j10': 'mountain', 'j11': 'mountain'
     },
     islands: {
-        'b2': 'lake', 'g2': 'lake',
-        'd4': 'mountain', 'e5': 'mountain',
-        'b7': 'lake', 'g7': 'lake'
+        'c3': 'lake', 'l3': 'lake',
+        'f7': 'mountain', 'i7': 'mountain',
+        'c12': 'lake', 'l12': 'lake'
     }
 };
 
@@ -52,37 +54,30 @@ let turn = 'w'; // 'w' or 'b'
 let selectedSquare = null;
 let validMoves = [];
 let gameOver = false;
-let gameMode = 'medium'; // 'none', 'easy', 'medium'
-let moveHistory = [];
+let gameMode = 'medium';
 
-// Initialize Standard Chess Setup
+// Initialize 14x14 Custom Chess Setup
 function initBoard() {
-    board = [
-        ['br','bn','bb','bq','bk','bb','bn','br'],
-        ['bp','bp','bp','bp','bp','bp','bp','bp'],
-        [null,null,null,null,null,null,null,null],
-        [null,null,null,null,null,null,null,null],
-        [null,null,null,null,null,null,null,null],
-        [null,null,null,null,null,null,null,null],
-        ['wp','wp','wp','wp','wp','wp','wp','wp'],
-        ['wr','wn','wb','wq','wk','wb','wn','wr']
-    ];
-    turn = 'w';
-    selectedSquare = null;
-    validMoves = [];
-    gameOver = false;
-    moveHistory = [];
+    board = Array(14).fill(null).map(() => Array(14).fill(null));
+    
+    // Back row setup (14 columns)
+    const backRow = ['br','bn','bn','bb','bb','bq','bk','bk','bq','bb','bb','bn','bn','br'];
+    board[0] = [...backRow];
+    board[13] = backRow.map(p => p ? 'w' + p[1] : null);
+
+    // Pawns setup (Rows 1 and 12)
+    board[1] = Array(14).fill('bp');
+    board[12] = Array(14).fill('wp');
 }
 
 function getSquareName(r, c) {
-    return String.fromCharCode(97 + c) + (8 - r);
+    return String.fromCharCode(97 + c) + (14 - r);
 }
 
 function setLandmark(type) {
     terrainMap = LANDMARKS[type] || {};
 }
 
-// Raycasting movement check
 function isValidLineOfSight(r1, c1, r2, c2) {
     let dr = Math.sign(r2 - r1);
     let dc = Math.sign(c2 - c1);
@@ -92,7 +87,6 @@ function isValidLineOfSight(r1, c1, r2, c2) {
     while (currR !== r2 || currC !== c2) {
         let sqName = getSquareName(currR, currC);
         let t = terrainMap[sqName];
-        // Mountains and lakes block line of sight/movement completely
         if (t === 'mountain' || t === 'lake') return false;
         currR += dr;
         currC += dc;
@@ -108,10 +102,9 @@ function getPseudoLegalMoves(r, c, currentBoard) {
     let moves = [];
 
     let addStepMove = (tr, tc) => {
-        if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+        if (tr >= 0 && tr < 14 && tc >= 0 && tc < 14) {
             let sqName = getSquareName(tr, tc);
             let t = terrainMap[sqName];
-            // Can't move onto mountains or lakes
             if (t === 'mountain' || t === 'lake') return;
 
             let target = currentBoard[tr][tc];
@@ -127,10 +120,9 @@ function getPseudoLegalMoves(r, c, currentBoard) {
         for (let [dr, dc] of directions) {
             let currR = r + dr;
             let currC = c + dc;
-            while (currR >= 0 && currR < 8 && currC >= 0 && currC < 8) {
+            while (currR >= 0 && currR < 14 && currC >= 0 && currC < 14) {
                 let sqName = getSquareName(currR, currC);
                 let t = terrainMap[sqName];
-                // Mountains and lakes block rays completely
                 if (t === 'mountain' || t === 'lake') break;
 
                 let target = currentBoard[currR][currC];
@@ -140,7 +132,7 @@ function getPseudoLegalMoves(r, c, currentBoard) {
                     if (target[0] !== color) {
                         moves.push({r: currR, c: currC, capture: true});
                     }
-                    break; // Blocked by piece
+                    break;
                 }
                 currR += dr;
                 currC += dc;
@@ -150,16 +142,14 @@ function getPseudoLegalMoves(r, c, currentBoard) {
 
     if (type === 'p') {
         let dir = (color === 'w') ? -1 : 1;
-        let startRow = (color === 'w') ? 6 : 1;
+        let startRow = (color === 'w') ? 12 : 1;
 
-        // Forward 1
         let f1r = r + dir;
-        if (f1r >= 0 && f1r < 8) {
+        if (f1r >= 0 && f1r < 14) {
             let sqName = getSquareName(f1r, c);
             let t = terrainMap[sqName];
             if (t !== 'mountain' && t !== 'lake' && !currentBoard[f1r][c]) {
                 moves.push({r: f1r, c: c});
-                // Forward 2 from start
                 let f2r = r + (dir * 2);
                 if (r === startRow && !currentBoard[f2r][c]) {
                     let midSqName = getSquareName(f1r, c);
@@ -170,11 +160,10 @@ function getPseudoLegalMoves(r, c, currentBoard) {
             }
         }
 
-        // Captures
         for (let dc of [-1, 1]) {
             let tr = r + dir;
             let tc = c + dc;
-            if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+            if (tr >= 0 && tr < 14 && tc >= 0 && tc < 14) {
                 let sqName = getSquareName(tr, tc);
                 let t = terrainMap[sqName];
                 if (t !== 'mountain' && t !== 'lake') {
@@ -213,8 +202,8 @@ function getPseudoLegalMoves(r, c, currentBoard) {
 }
 
 function isSquareAttacked(r, c, byColor, currentBoard) {
-    for (let ar = 0; ar < 8; ar++) {
-        for (let ac = 0; ac < 8; ac++) {
+    for (let ar = 0; ar < 14; ar++) {
+        for (let ac = 0; ac < 14; ac++) {
             let piece = currentBoard[ar][ac];
             if (piece && piece[0] === byColor) {
                 let type = piece[1];
@@ -236,8 +225,8 @@ function isSquareAttacked(r, c, byColor, currentBoard) {
 }
 
 function findKing(color, currentBoard) {
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
+    for (let r = 0; r < 14; r++) {
+        for (let c = 0; c < 14; c++) {
             if (currentBoard[r][c] === color + 'k') return {r, c};
         }
     }
@@ -255,7 +244,10 @@ function getLegalMoves(r, c, currentBoard) {
         currentBoard[r][c] = null;
 
         let kingPos = findKing(color, currentBoard);
-        let inCheck = kingPos ? isSquareAttacked(kingPos.r, kingPos.c, color === 'w' ? 'b' : 'w', currentBoard) : false;
+        let inCheck = false;
+        if (kingPos) {
+            inCheck = isSquareAttacked(kingPos.r, kingPos.c, color === 'w' ? 'b' : 'w', currentBoard);
+        }
 
         currentBoard[r][c] = currentBoard[move.r][move.c];
         currentBoard[move.r][move.c] = targetBackup;
@@ -269,8 +261,8 @@ function getLegalMoves(r, c, currentBoard) {
 
 function getAllLegalMoves(color, currentBoard) {
     let allMoves = [];
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
+    for (let r = 0; r < 14; r++) {
+        for (let c = 0; c < 14; c++) {
             if (currentBoard[r][c] && currentBoard[r][c][0] === color) {
                 let moves = getLegalMoves(r, c, currentBoard);
                 for (let m of moves) {
@@ -285,7 +277,7 @@ function getAllLegalMoves(color, currentBoard) {
 function makeMove(fromR, fromC, toR, toC) {
     let piece = board[fromR][fromC];
     
-    if (piece[1] === 'p' && (toR === 0 || toR === 7)) {
+    if (piece[1] === 'p' && (toR === 0 || toR === 13)) {
         piece = piece[0] + 'q';
     }
 
@@ -329,12 +321,11 @@ function checkGameStatus() {
     }
 }
 
-// AI Logic
 function evaluateBoard(currentBoard) {
     const values = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 900 };
     let score = 0;
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
+    for (let r = 0; r < 14; r++) {
+        for (let c = 0; c < 14; c++) {
             let p = currentBoard[r][c];
             if (p) {
                 let val = values[p[1]];
@@ -381,13 +372,12 @@ function makeAIMove() {
     }
 }
 
-// Rendering
 function renderBoard() {
     const boardEl = document.getElementById('board');
     boardEl.innerHTML = '';
 
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
+    for (let r = 0; r < 14; r++) {
+        for (let c = 0; c < 14; c++) {
             const sqEl = document.createElement('div');
             const sqName = getSquareName(r, c);
             const isDark = (r + c) % 2 === 1;
