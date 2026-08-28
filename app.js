@@ -557,17 +557,34 @@ const TERRAIN_PRESETS = {
     // ---------------------------------------------------------------------------------
     
     // Extracted clamping function so both pointer and wheel events can use it
-    function clampPan() {
-        const outer = document.getElementById("board-outer");
-        if (!outer) return;
-        const w = outer.offsetWidth;
-        const h = outer.offsetHeight;
-        const maxTranslateX = (w * currentScale - w) / currentScale;
-        const maxTranslateY = (h * currentScale - h) / currentScale;
+function clampPan() {
+    const outer = document.getElementById("board-outer");
+    const boardEl = document.getElementById("board");
+    if (!outer || !boardEl) return;
 
-        panX = Math.min(0, Math.max(-maxTranslateX, panX));
-        panY = Math.min(0, Math.max(-maxTranslateY, panY));
+    const outerW = outer.offsetWidth;
+    const outerH = outer.offsetHeight;
+    
+    // Calculate full scaled board dimensions
+    const scaledW = boardEl.offsetWidth * currentScale;
+    const scaledH = boardEl.offsetHeight * currentScale;
+
+    // Horizontally: clamp pan based on whether zoomed content exceeds outer container
+    if (scaledW > outerW) {
+        const minX = (outerW - scaledW) / currentScale;
+        panX = Math.min(0, Math.max(minX, panX));
+    } else {
+        panX = (outerW - scaledW) / (2 * currentScale); // Center horizontally when smaller
     }
+
+    // Vertically: clamp pan based on outer container height
+    if (scaledH > outerH) {
+        const minY = (outerH - scaledH) / currentScale;
+        panY = Math.min(0, Math.max(minY, panY));
+    } else {
+        panY = (outerH - scaledH) / (2 * currentScale); // Center vertically when smaller
+    }
+}
 
     function applyCameraTransform() {
         const boardEl = document.getElementById("board");
@@ -1136,7 +1153,12 @@ function setupPanning() {
             } else {
                 zenBtn.innerHTML = "👁️ Zen";
             }
+
+            // Recalculate camera bounds and redraw for the updated container size
+                clampPan();
+                applyCameraTransform();
         });
+        
 
         document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; document.getElementById("btn-reset").click(); });
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
