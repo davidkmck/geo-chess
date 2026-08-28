@@ -27,12 +27,92 @@
     // Tracks the AI's own previous move, so it can be discouraged from immediately undoing it.
     let aiLastMove = null;
 
-    const TERRAIN_PRESETS = {
-        default: ["pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "ppppFFrrpppppp", "ppMMppppppMMpp", "ppMMppppppMMpp", "ppMMppppppMMpp", "ppMMppppppMMpp", "pppprrFFpppppp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp"],
-
-        alternative: ["pppppppppppppp", "pppppppppppppp", "pppppppppppppp", "ppMMFFpppppppp", "ppMMFFLLpppppp", "ppppppLLpppppp", "rrrfrrrppppppp", "pppppprrrrrrfr", "ppppppLLpppppp", "ppppppLLFFMMpp", "ppppppppFFMMpp", "pppppppppppppp", "pppppppppppppp", "pppppppppppppp"],
-        none: Array(14).fill("pppppppppppppp")
-    };
+const TERRAIN_PRESETS = {
+  default: [
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "ppppFFrrpppppp",
+    "ppMMppppppMMpp",
+    "ppMMppppppMMpp",
+    "ppMMppppppMMpp",
+    "ppMMppppppMMpp",
+    "pppprrFFpppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp"
+  ],
+  alternative: [
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "ppMMFFpppppppp",
+    "ppMMFFLLpppppp",
+    "ppppppLLpppppp",
+    "rrrfrrrppppppp",
+    "pppppprrrrrrfr",
+    "ppppppLLpppppp",
+    "ppppppLLFFMMpp",
+    "ppppppppFFMMpp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp"
+  ],
+  // Defensive vs. Offensive (South Fortress)
+  fortress: [
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "ppMMMffMMMpppp",
+    "ppMFFppFFMpppp",
+    "ppMFppppFMpppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp"
+  ],
+  // Tactical Bottleneck / Corridor
+  pass: [
+    "MMMMppppppMMMM",
+    "MMMMppppppMMMM",
+    "MMMMppppppMMMM",
+    "MMMMppppppMMMM",
+    "MMMMppFFppMMMM",
+    "MMMMppFFppMMMM",
+    "MMMMppffppMMMM",
+    "MMMMppffppMMMM",
+    "MMMMppFFppMMMM",
+    "MMMMppFFppMMMM",
+    "MMMMppppppMMMM",
+    "MMMMppppppMMMM",
+    "MMMMppppppMMMM",
+    "MMMMppppppMMMM"
+  ],
+  // Island Chains
+  archipelago: [
+    "pppppppppppppp",
+    "ppLLLLrrLLLLpp",
+    "ppLppppppppLpp",
+    "ppLpMMppMMpLpp",
+    "ppLpMMppMMpLpp",
+    "ppLppppppppLpp",
+    "rrrfrrrffrrrfr",
+    "rrrfrrrffrrrfr",
+    "ppLppppppppLpp",
+    "ppLpMMppMMpLpp",
+    "ppLpMMppMMpLpp",
+    "ppLppppppppLpp",
+    "ppLLLLrrLLLLpp",
+    "pppppppppppppp"
+  ],
+  none: Array(14).fill("pppppppppppppp")
+};
 
     function terrain(r, f) {
         const char = TERRAIN_PRESETS[currentTerrain][r][f];
