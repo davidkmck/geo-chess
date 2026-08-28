@@ -546,6 +546,11 @@ function getMoves(r, f, bMatrix) {
                 startPanX = panX;
                 startPanY = panY;
                 hasDragged = false;
+                
+                // CRITICAL FOR DESKTOP: Capture pointer moves even if mouse moves outside outer bounds
+                try {
+                    outer.setPointerCapture(e.pointerId);
+                } catch (err) {}
             } else if (keys.length === 2) {
                 isPanning = false;
                 const p1 = pointers[keys[0]];
@@ -591,6 +596,10 @@ function getMoves(r, f, bMatrix) {
         });
 
         const removePointer = (e) => {
+            try {
+                outer.releasePointerCapture(e.pointerId);
+            } catch (err) {}
+
             delete pointers[e.pointerId];
             
             const keys = Object.keys(pointers);
@@ -621,6 +630,8 @@ function getMoves(r, f, bMatrix) {
             applyCameraTransform();
         }, { passive: false });
     }
+    
+
 
     function renderMoveLog() {
         const listEl = document.getElementById("move-log-list");
