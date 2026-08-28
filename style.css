@@ -202,46 +202,56 @@ body:has(#inner-board-toggle:checked) .board::after {
 
 .hidden { display: none !important; }
 
-body.zen-active .game-panels, 
-body.zen-active .controls-header #btn-reset, 
+
+
+
+
+
+/* Hide all controls EXCEPT the Zen button itself */
+body.zen-active .game-panels,
+body.zen-active .controls-header #btn-reset,
 body.zen-active .controls-header #btn-flip,
-body.zen-active .controls-header h1 { 
-    display: none !important; 
+body.zen-active .controls-header h1 {
+    display: none !important;
 }
 
-body.zen-active .board-container-wrapper {
-    max-width: none;
-    width: 100%;
-    max-width: calc(min(100vw - 20px, 100vh - 80px));
-    margin: 0 auto;
+/* Float the Zen toggle over the top-left of the board */
+body.zen-active .controls-header {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 100;
+    background: transparent;
+    padding: 0;
 }
 
 body.zen-active .game-layout {
-    padding: 5px; 
-}
-
-/* Ensure the body and outer wrapper can expand edge-to-edge in Zen mode */
-body.zen-mode {
     padding: 0;
-    margin: 0;
-    overflow: hidden;
-    touch-action: none;
+    width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+    justify-content: center;
 }
 
-/* Allow the board outer wrapper to fill 100% of the viewport */
-body.zen-mode .board-container-wrapper {
+body.zen-active .board-container-wrapper {
     width: 100vw;
     height: 100vh;
     max-width: 100vw;
     max-height: 100vh;
-    padding: 0;
+    grid-template-columns: 1fr; /* Hides left turn indicator column */
     margin: 0;
-    overflow: auto; /* Allows panning/zooming across the whole board */
-    -webkit-overflow-scrolling: touch;
+    padding: 0;
 }
 
-/* Optional: Support notch/home indicator areas on mobile */
-body.zen-mode .board-outer {
+body.zen-active .left-control-stack {
+    display: none !important;
+}
+
+body.zen-active .board-outer {
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto; /* Removes square aspect-ratio constraint */
+    border: none;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
