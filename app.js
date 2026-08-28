@@ -8,17 +8,13 @@
 
     let board = [], turn = "w", selected = null, legalTargets = [], gameOver = false, gameOverText = "", currentTerrain = 'default';
     let lastMoveSource = null, lastMoveTarget = null;
-    
-    // History & Move Log Variables
     let history = [], moveLog = [], currentIndex = 0;
 
-    // Camera Variables
     let currentScale = 1;
     const MIN_SCALE = 1, MAX_SCALE = 4;
     let panX = 0, panY = 0, startMouseX = 0, startMouseY = 0, startPanX = 0, startPanY = 0, isPanning = false;
     let isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
     let hasDragged = false;
-    
     let initialPinchDistance = -1;
     let aiLastMove = null;
 
@@ -112,20 +108,13 @@
         return map[char] || "plain";
     }
 
-function isImpassable(t) { 
-    return t === "mountain" || t === "lake"; 
-}
+    function isImpassable(t) { return t === "mountain" || t === "lake"; }
     function isWater(t) { return t === "river" || t === "lake"; }
     function isForest(t) { return t === "forest"; }
-
     
     function canCapture(tFrom, tTo) {
-        // Water to Land is forbidden (Water to Water is allowed)
         if (isWater(tFrom) && !isWater(tTo)) return false;
-        
-        // Outside to Forest is forbidden (Forest to Forest is allowed)
         if (!isForest(tFrom) && isForest(tTo)) return false;
-        
         return true;
     }
 
@@ -199,110 +188,99 @@ function isImpassable(t) {
         if (btnRedo) btnRedo.disabled = currentIndex >= history.length - 1;
     }
 
-    function canCapture(tFrom, tTo) {
-    // Water to Land is forbidden (Water to Water is allowed)
-    if (isWater(tFrom) && !isWater(tTo)) return false;
-    
-    // Outside to Forest is forbidden (Forest to Forest is allowed)
-    if (!isForest(tFrom) && isForest(tTo)) return false;
-    
-    return true;
-}
+    function getMoves(r, f, bMatrix) {
+        const p = bMatrix[r][f];
+        if (!p) return [];
+        const moves = [], tFrom = terrain(r, f);
+        const D = { 
+            R: [[1,0], [-1,0], [0,1], [0,-1]], 
+            B: [[1,1], [1,-1], [-1,1], [-1,-1]], 
+            Q: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]], 
+            K: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]], 
+            N: [[2,1], [2,-1], [-2,1], [-2,-1], [1,2], [1,-2], [-1,2], [-1,-2]] 
+        };
 
-function getMoves(r, f, bMatrix) {
-    const p = bMatrix[r][f];
-    if (!p) return [];
-    const moves = [], tFrom = terrain(r, f);
-    const D = { 
-        R: [[1,0], [-1,0], [0,1], [0,-1]], 
-        B: [[1,1], [1,-1], [-1,1], [-1,-1]], 
-        Q: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]], 
-        K: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]], 
-        N: [[2,1], [2,-1], [-2,1], [-2,-1], [1,2], [1,-2], [-1,2], [-1,-2]] 
-    };
-
-    if (p.type === "P") {
-        const dir = p.color === "w" ? -1 : 1;
-        const nr = r + dir;
-        if (nr >= 0 && nr < SIZE && !bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
-            moves.push({ r: nr, f: f });
-            if (!p.moved && !bMatrix[r + (2 * dir)][f] && !isImpassable(terrain(r + (2 * dir), f))) {
-                moves.push({ r: r + (2 * dir), f: f });
-            }
-        }
-        [f - 1, f + 1].forEach(nf => {
-            if (nf >= 0 && nf < SIZE && r + dir >= 0 && r + dir < SIZE) {
-                const tTo = terrain(r + dir, nf), tgt = bMatrix[r + dir][nf];
-                if (tgt && tgt.color !== p.color && !isImpassable(tTo) && canCapture(tFrom, tTo)) {
-                    moves.push({ r: r + dir, f: nf });
+        if (p.type === "P") {
+            const dir = p.color === "w" ? -1 : 1;
+            const nr = r + dir;
+            if (nr >= 0 && nr < SIZE && !bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
+                moves.push({ r: nr, f: f });
+                if (!p.moved && !bMatrix[r + (2 * dir)][f] && !isImpassable(terrain(r + (2 * dir), f))) {
+                    moves.push({ r: r + (2 * dir), f: f });
                 }
             }
-        });
-    } else if (["R", "B", "Q"].includes(p.type)) {
-        D[p.type].forEach(([dr, df]) => {
-            let cr = r + dr, cf = f + df;
-            while (cr >= 0 && cr < SIZE && cf >= 0 && cf < SIZE) {
-                const tTo = terrain(cr, cf);
-                if (isImpassable(tTo)) break;
-                
-                const tgt = bMatrix[cr][cf];
-                if (!tgt) { 
-                    moves.push({ r: cr, f: cf }); 
-                } else { 
-                    if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
+            [f - 1, f + 1].forEach(nf => {
+                if (nf >= 0 && nf < SIZE && r + dir >= 0 && r + dir < SIZE) {
+                    const tTo = terrain(r + dir, nf), tgt = bMatrix[r + dir][nf];
+                    if (tgt && tgt.color !== p.color && !isImpassable(tTo) && canCapture(tFrom, tTo)) {
+                        moves.push({ r: r + dir, f: nf });
+                    }
+                }
+            });
+        } else if (["R", "B", "Q"].includes(p.type)) {
+            D[p.type].forEach(([dr, df]) => {
+                let cr = r + dr, cf = f + df;
+                while (cr >= 0 && cr < SIZE && cf >= 0 && cf < SIZE) {
+                    const tTo = terrain(cr, cf);
+                    if (isImpassable(tTo)) break;
+                    
+                    const tgt = bMatrix[cr][cf];
+                    if (!tgt) { 
                         moves.push({ r: cr, f: cf }); 
-                    }
-                    break; // Stop sliding ray on piece collision
-                }
-                
-                // Stop sliding rays when crossing out of water or entering forest from open terrain
-                if ((isWater(tFrom) && !isWater(tTo)) || (!isForest(tFrom) && isForest(tTo))) break;
-
-                cr += dr; cf += df;
-            }
-        });
-    } else if (["N", "K"].includes(p.type)) {
-        D[p.type].forEach(([dr, df]) => {
-            const nr = r + dr, nf = f + df;
-            if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
-                const tTo = terrain(nr, nf);
-                if (!isImpassable(tTo)) {
-                    const tgt = bMatrix[nr][nf];
-                    if (!tgt || (tgt.color !== p.color && canCapture(tFrom, tTo))) {
-                        moves.push({ r: nr, f: nf });
-                    }
-                }
-            }
-
-            if (p.type === "K" && !p.moved) {
-                [1, -1].forEach(step => {
-                    let pathClear = true;
-                    let foundRook = false;
-                    for (let x = f + step; x >= 0 && x < SIZE; x += step) {
-                        const sq = bMatrix[r][x];
-                        if (isImpassable(terrain(r, x))) {
-                            pathClear = false;
-                            break;
+                    } else { 
+                        if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
+                            moves.push({ r: cr, f: cf }); 
                         }
-                        if (sq) {
-                            if (sq.type === "R" && !sq.moved && sq.color === p.color) {
-                                foundRook = true;
-                            } else {
+                        break;
+                    }
+                    
+                    if ((isWater(tFrom) && !isWater(tTo)) || (!isForest(tFrom) && isForest(tTo))) break;
+
+                    cr += dr; cf += df;
+                }
+            });
+        } else if (["N", "K"].includes(p.type)) {
+            D[p.type].forEach(([dr, df]) => {
+                const nr = r + dr, nf = f + df;
+                if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
+                    const tTo = terrain(nr, nf);
+                    if (!isImpassable(tTo)) {
+                        const tgt = bMatrix[nr][nf];
+                        if (!tgt || (tgt.color !== p.color && canCapture(tFrom, tTo))) {
+                            moves.push({ r: nr, f: nf });
+                        }
+                    }
+                }
+
+                if (p.type === "K" && !p.moved) {
+                    [1, -1].forEach(step => {
+                        let pathClear = true;
+                        let foundRook = false;
+                        for (let x = f + step; x >= 0 && x < SIZE; x += step) {
+                            const sq = bMatrix[r][x];
+                            if (isImpassable(terrain(r, x))) {
                                 pathClear = false;
+                                break;
                             }
-                            break; 
+                            if (sq) {
+                                if (sq.type === "R" && !sq.moved && sq.color === p.color) {
+                                    foundRook = true;
+                                } else {
+                                    pathClear = false;
+                                }
+                                break; 
+                            }
                         }
-                    }
-                    if (pathClear && foundRook) {
-                        moves.push({ r: r, f: f + (2 * step) });
-                    }
-                });
-            }
-        });
+                        if (pathClear && foundRook) {
+                            moves.push({ r: r, f: f + (2 * step) });
+                        }
+                    });
+                }
+            });
+        }
+        return moves;
     }
-    return moves;
-}
-    
+
     function generateAllLegalMoves(color, bMatrix) {
         const list = [];
         for (let r = 0; r < SIZE; r++) for (let f = 0; f < SIZE; f++) if (bMatrix[r][f] && bMatrix[r][f].color === color) getMoves(r, f, bMatrix).forEach(t => list.push({ from: { r, f }, to: t }));
@@ -491,35 +469,32 @@ function getMoves(r, f, bMatrix) {
         }, 50);
     }
 
- function clampPan() {
-    const outer = document.getElementById("board-outer");
-    const boardEl = document.getElementById("board");
-    if (!outer || !boardEl) return;
+    function clampPan() {
+        const outer = document.getElementById("board-outer");
+        const boardEl = document.getElementById("board");
+        if (!outer || !boardEl) return;
 
-    const outerW = outer.offsetWidth;
-    const outerH = outer.offsetHeight;
-    
-    // Get actual pixel size of the square board element
-    const boardSize = boardEl.offsetWidth;
-    const scaledW = boardSize * currentScale;
-    const scaledH = boardSize * currentScale;
+        const outerW = outer.offsetWidth;
+        const outerH = outer.offsetHeight;
+        
+        const boardSize = boardEl.offsetWidth;
+        const scaledW = boardSize * currentScale;
+        const scaledH = boardSize * currentScale;
 
-    // Horizontally: clamp pan or center if smaller than outer container
-    if (scaledW > outerW) {
-        const minX = (outerW - scaledW) / currentScale;
-        panX = Math.min(0, Math.max(minX, panX));
-    } else {
-        panX = (outerW - scaledW) / (2 * currentScale);
+        if (scaledW > outerW) {
+            const minX = (outerW - scaledW) / currentScale;
+            panX = Math.min(0, Math.max(minX, panX));
+        } else {
+            panX = (outerW - scaledW) / (2 * currentScale);
+        }
+
+        if (scaledH > outerH) {
+            const minY = (outerH - scaledH) / currentScale;
+            panY = Math.min(0, Math.max(minY, panY));
+        } else {
+            panY = (outerH - scaledH) / (2 * currentScale);
+        }
     }
-
-    // Vertically: clamp pan or center if smaller than outer container
-    if (scaledH > outerH) {
-        const minY = (outerH - scaledH) / currentScale;
-        panY = Math.min(0, Math.max(minY, panY));
-    } else {
-        panY = (outerH - scaledH) / (2 * currentScale);
-    }
-}
 
     function applyCameraTransform() {
         const boardEl = document.getElementById("board");
@@ -546,11 +521,7 @@ function getMoves(r, f, bMatrix) {
                 startPanX = panX;
                 startPanY = panY;
                 hasDragged = false;
-                
-                // CRITICAL FOR DESKTOP: Capture pointer moves even if mouse moves outside outer bounds
-                try {
-                    outer.setPointerCapture(e.pointerId);
-                } catch (err) {}
+                try { outer.setPointerCapture(e.pointerId); } catch (err) {}
             } else if (keys.length === 2) {
                 isPanning = false;
                 const p1 = pointers[keys[0]];
@@ -596,10 +567,7 @@ function getMoves(r, f, bMatrix) {
         });
 
         const removePointer = (e) => {
-            try {
-                outer.releasePointerCapture(e.pointerId);
-            } catch (err) {}
-
+            try { outer.releasePointerCapture(e.pointerId); } catch (err) {}
             delete pointers[e.pointerId];
             
             const keys = Object.keys(pointers);
@@ -630,8 +598,6 @@ function getMoves(r, f, bMatrix) {
             applyCameraTransform();
         }, { passive: false });
     }
-    
-
 
     function renderMoveLog() {
         const listEl = document.getElementById("move-log-list");
@@ -753,9 +719,6 @@ function getMoves(r, f, bMatrix) {
                     const piece = document.createElement("span");
                     piece.className = `piece ${p.color === 'w' ? 'white' : 'black'}`;
                     piece.textContent = PIECE_SYMBOLS[p.color][p.type];
-                    piece.style.pointerEvents = "none";
-                    piece.style.userSelect = "none";
-                    piece.style.webkitUserDrag = "none";
                     cell.appendChild(piece);
                 }
                 
