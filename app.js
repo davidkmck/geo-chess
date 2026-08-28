@@ -48,22 +48,20 @@ const TERRAIN_PRESETS = {
     "pppppppppppppp",
     "pppppppppppppp",
     "pppppppppppppp",
-    "ppMMFFpppppppp",
+    "pppppppppppppp",
     "ppMMFFLLpppppp",
     "ppppppLLpppppp",
     "rrrfrrrppppppp",
     "pppppprrrrrrfr",
     "ppppppLLpppppp",
     "ppppppLLFFMMpp",
-    "ppppppppFFMMpp",
+    "pppppppppppppp",
     "pppppppppppppp",
     "pppppppppppppp",
     "pppppppppppppp"
   ],
-  // Defensive vs. Offensive (South Fortress)
+  // Defensive vs. Offensive (South Fortress shifted down to mid-board, clear of deployment ranks 0-4 & 9-13)
   fortress: [
-    "pppppppppppppp",
-    "pppppppppppppp",
     "pppppppppppppp",
     "pppppppppppppp",
     "pppppppppppppp",
@@ -75,45 +73,46 @@ const TERRAIN_PRESETS = {
     "pppppppppppppp",
     "pppppppppppppp",
     "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
     "pppppppppppppp"
   ],
-  // Tactical Bottleneck / Corridor
+  // Tactical Bottleneck / Corridor (Flank walls trimmed to ranks 4–9 so initial moves remain free)
   pass: [
-    "MMMMppppppMMMM",
-    "MMMMppppppMMMM",
-    "MMMMppppppMMMM",
-    "MMMMppppppMMMM",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
     "MMMMppFFppMMMM",
     "MMMMppFFppMMMM",
     "MMMMppffppMMMM",
     "MMMMppffppMMMM",
     "MMMMppFFppMMMM",
     "MMMMppFFppMMMM",
-    "MMMMppppppMMMM",
-    "MMMMppppppMMMM",
-    "MMMMppppppMMMM",
-    "MMMMppppppMMMM"
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp"
   ],
-  // Island Chains
+  // Island Chains (Water & island features moved away from ranks 0–3 and 10–13)
   archipelago: [
     "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
     "ppLLLLrrLLLLpp",
-    "ppLppppppppLpp",
     "ppLpMMppMMpLpp",
-    "ppLpMMppMMpLpp",
-    "ppLppppppppLpp",
     "rrrfrrrffrrrfr",
     "rrrfrrrffrrrfr",
-    "ppLppppppppLpp",
     "ppLpMMppMMpLpp",
-    "ppLpMMppMMpLpp",
-    "ppLppppppppLpp",
     "ppLLLLrrLLLLpp",
+    "pppppppppppppp",
+    "pppppppppppppp",
+    "pppppppppppppp",
     "pppppppppppppp"
   ],
   none: Array(14).fill("pppppppppppppp")
 };
-
     function terrain(r, f) {
         const char = TERRAIN_PRESETS[currentTerrain][r][f];
         const map = { 'p': "plain", 'M': "mountain", 'F': "forest", 'L': "lake", 'r': "river", 'f': "ford" };
