@@ -12,107 +12,100 @@
     // History & Move Log Variables
     let history = [], moveLog = [], currentIndex = 0;
 
-    // Camera Variables (Updated for Pinch-to-Zoom)
+    // Camera Variables
     let currentScale = 1;
     const MIN_SCALE = 1, MAX_SCALE = 4;
     let panX = 0, panY = 0, startMouseX = 0, startMouseY = 0, startPanX = 0, startPanY = 0, isPanning = false;
     let isFlipped = false, aiEnabled = true, aiDepth = 2, aiThinking = false;
-    let hasDragged = false; // NEW: Tracks if the pointer was dragged
+    let hasDragged = false;
     
-    
-    // Pinch-to-zoom specific state
-    let pointerCache = [];
     let initialPinchDistance = -1;
-
-    // Tracks the AI's own previous move, so it can be discouraged from immediately undoing it.
     let aiLastMove = null;
 
-const TERRAIN_PRESETS = {
-  default: [
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "ppppFFrrpppppp",
-    "ppMMppppppMMpp",
-    "ppMMppppppMMpp",
-    "ppMMppppppMMpp",
-    "ppMMppppppMMpp",
-    "pppprrFFpppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp"
-  ],
-  alternative: [
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "ppMMFFLLpppppp",
-    "ppppppLLpppppp",
-    "rrrfrrrppppppp",
-    "pppppprrrrrrfr",
-    "ppppppLLpppppp",
-    "ppppppLLFFMMpp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp"
-  ],
-  // Defensive vs. Offensive (South Fortress shifted down to mid-board, clear of deployment ranks 0-4 & 9-13)
-  fortress: [
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "ppMMMffMMMpppp",
-    "ppMFFppFFMpppp",
-    "ppMFppppFMpppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp"
-  ],
-  // Tactical Bottleneck / Corridor (Flank walls trimmed to ranks 4–9 so initial moves remain free)
-  pass: [
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "MMMMppFFppMMMM",
-    "MMMMppFFppMMMM",
-    "MMMMppffppMMMM",
-    "MMMMppffppMMMM",
-    "MMMMppFFppMMMM",
-    "MMMMppFFppMMMM",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp"
-  ],
-  // Island Chains (Water & island features moved away from ranks 0–3 and 10–13)
-  archipelago: [
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "ppLLLLrrLLLLpp",
-    "ppLpMMppMMpLpp",
-    "rrrfrrrffrrrfr",
-    "rrrfrrrffrrrfr",
-    "ppLpMMppMMpLpp",
-    "ppLLLLrrLLLLpp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp",
-    "pppppppppppppp"
-  ],
-  none: Array(14).fill("pppppppppppppp")
-};
+    const TERRAIN_PRESETS = {
+      default: [
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "ppppFFrrpppppp",
+        "ppMMppppppMMpp",
+        "ppMMppppppMMpp",
+        "ppMMppppppMMpp",
+        "ppMMppppppMMpp",
+        "pppprrFFpppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp"
+      ],
+      alternative: [
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "ppMMFFLLpppppp",
+        "ppppppLLpppppp",
+        "rrrfrrrppppppp",
+        "pppppprrrrrrfr",
+        "ppppppLLpppppp",
+        "ppppppLLFFMMpp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp"
+      ],
+      fortress: [
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "ppMMMffMMMpppp",
+        "ppMFFppFFMpppp",
+        "ppMFppppFMpppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp"
+      ],
+      pass: [
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "MMMMppFFppMMMM",
+        "MMMMppFFppMMMM",
+        "MMMMppffppMMMM",
+        "MMMMppffppMMMM",
+        "MMMMppFFppMMMM",
+        "MMMMppFFppMMMM",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp"
+      ],
+      archipelago: [
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "ppLLLLrrLLLLpp",
+        "ppLpMMppMMpLpp",
+        "rrrfrrrffrrrfr",
+        "rrrfrrrffrrrfr",
+        "ppLpMMppMMpLpp",
+        "ppLLLLrrLLLLpp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp",
+        "pppppppppppppp"
+      ],
+      none: Array(14).fill("pppppppppppppp")
+    };
+
     function terrain(r, f) {
         const char = TERRAIN_PRESETS[currentTerrain][r][f];
         const map = { 'p': "plain", 'M': "mountain", 'F': "forest", 'L': "lake", 'r': "river", 'f': "ford" };
@@ -129,66 +122,18 @@ const TERRAIN_PRESETS = {
         return true;
     }
 
-
-    /* previous (before 2026-07-15)
-    // Dynamic Board Generator
     function freshBoard() {
         const whiteStart = document.getElementById("white-start-select")?.value || "topos";
         const blackStart = document.getElementById("black-start-select")?.value || "topos";
-        
         const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
-
         const coreBackRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
-        // FIX 1: Topos back rank is now 14 real pieces (4R, 4N, 4B, Q, K) - no pawns mixed in.
-        // The full pawn row is placed separately, one rank in front of this.
-        const toposBackRank = ['R', 'N', 'B', 'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R', 'B', 'N', 'R'];
 
-        // DEPLOY BLACK
         if (blackStart === "classic") {
             for (let x = 0; x < 8; x++) {
                 b[3][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
                 b[4][x + 3] = { type: "P", color: "b", moved: false };
             }
         } else {
-            for (let x = 0; x < 14; x++) {
-                b[0][x] = { type: toposBackRank[x], color: "b", moved: false };
-                b[1][x] = { type: "P", color: "b", moved: false };
-            }
-        }
-
-        // DEPLOY WHITE
-        if (whiteStart === "classic") {
-            for (let x = 0; x < 8; x++) {
-                b[10][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
-                b[9][x + 3] = { type: "P", color: "w", moved: false };
-            }
-        } else {
-            for (let x = 0; x < 14; x++) {
-                b[13][x] = { type: toposBackRank[x], color: "w", moved: false };
-                b[12][x] = { type: "P", color: "w", moved: false };
-            }
-        }
-
-        return b;
-    }
-    */
-    // Dynamic Board Generator
-    function freshBoard() {
-        const whiteStart = document.getElementById("white-start-select")?.value || "topos";
-        const blackStart = document.getElementById("black-start-select")?.value || "topos";
-        const b = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
-        
-        // We only need the standard 8 pieces
-        const coreBackRank = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
-
-        // DEPLOY BLACK
-        if (blackStart === "classic") {
-            for (let x = 0; x < 8; x++) {
-                b[3][x + 3] = { type: coreBackRank[x], color: "b", moved: false };
-                b[4][x + 3] = { type: "P", color: "b", moved: false };
-            }
-        } else {
-            // Topos deployment: 14 pawns across the front, 8 core pieces centered in the back
             for (let x = 0; x < 14; x++) {
                 b[1][x] = { type: "P", color: "b", moved: false };
             }
@@ -197,14 +142,12 @@ const TERRAIN_PRESETS = {
             }
         }
 
-        // DEPLOY WHITE
         if (whiteStart === "classic") {
             for (let x = 0; x < 8; x++) {
                 b[10][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
                 b[9][x + 3] = { type: "P", color: "w", moved: false };
             }
         } else {
-            // Topos deployment: 14 pawns across the front, 8 core pieces centered in the back
             for (let x = 0; x < 14; x++) {
                 b[12][x] = { type: "P", color: "w", moved: false };
             }
@@ -212,13 +155,11 @@ const TERRAIN_PRESETS = {
                 b[13][x + 3] = { type: coreBackRank[x], color: "w", moved: false };
             }
         }
-
         return b;
     }
     
     function cloneBoard(src) { return src.map(row => row.map(cell => cell ? { ...cell } : null)); }
 
-    // History Management
     function saveState() {
         history = history.slice(0, currentIndex + 1);
         moveLog = moveLog.slice(0, currentIndex);
@@ -242,7 +183,6 @@ const TERRAIN_PRESETS = {
         selected = null; legalTargets = [];
         updateUndoRedoButtons(); 
         render();
-        // The AI trigger that used to be here has been intentionally removed!
     }
 
     function updateUndoRedoButtons() {
@@ -279,52 +219,54 @@ const TERRAIN_PRESETS = {
                 while (cr >= 0 && cr < SIZE && cf >= 0 && cf < SIZE) {
                     const tTo = terrain(cr, cf);
                     if (isImpassable(tTo)) break;
+                    
                     const tgt = bMatrix[cr][cf];
-                    if (!tgt) { moves.push({ r: cr, f: cf }); if (isWater(tFrom) || isWater(tTo) || isForest(tTo)) break; }
-                    else { if (tgt.color !== p.color && canCapture(tFrom, tTo)) moves.push({ r: cr, f: cf }); break; }
+                    if (!tgt) { 
+                        moves.push({ r: cr, f: cf }); 
+                    } else { 
+                        if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
+                            moves.push({ r: cr, f: cf }); 
+                        }
+                        break;
+                    }
+                    
+                    if (isForest(tTo) || isWater(tTo) || isWater(tFrom)) break;
+
                     cr += dr; cf += df;
                 }
             });
         } else if (["N", "K"].includes(p.type)) {
             D[p.type].forEach(([dr, df]) => {
                 const nr = r + dr, nf = f + df;
-                if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE && !isImpassable(terrain(nr, nf))) {
-                    const tgt = bMatrix[nr][nf];
-                    if (!tgt || (tgt.color !== p.color && canCapture(tFrom, terrain(nr, nf)))) moves.push({ r: nr, f: nf });
+                if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
+                    const tTo = terrain(nr, nf);
+                    if (!isImpassable(tTo)) {
+                        const tgt = bMatrix[nr][nf];
+                        if (!tgt || (tgt.color !== p.color && canCapture(tFrom, tTo))) {
+                            moves.push({ r: nr, f: nf });
+                        }
+                    }
                 }
 
-                // ...^^^  existing Knight/King directional loop ...
-
-                // NEW: Castling Move Generation
                 if (p.type === "K" && !p.moved) {
-                    // Check both directions (Kingside = 1, Queenside = -1)
                     [1, -1].forEach(step => {
                         let pathClear = true;
                         let foundRook = false;
-                        
-                        // Scan out to the edge of the board in this direction
                         for (let x = f + step; x >= 0 && x < SIZE; x += step) {
                             const sq = bMatrix[r][x];
-                            
-                            // If we hit an impassable mountain, path is blocked
                             if (isImpassable(terrain(r, x))) {
                                 pathClear = false;
                                 break;
                             }
-                            
                             if (sq) {
-                                // If it's our unmoved Rook, we can castle!
                                 if (sq.type === "R" && !sq.moved && sq.color === p.color) {
                                     foundRook = true;
                                 } else {
-                                    // Any other piece blocks the path
                                     pathClear = false;
                                 }
                                 break; 
                             }
                         }
-                        
-                        // If the path is empty and ends in an unmoved rook, add the 2-square jump
                         if (pathClear && foundRook) {
                             moves.push({ r: r, f: f + (2 * step) });
                         }
@@ -335,8 +277,6 @@ const TERRAIN_PRESETS = {
         return moves;
     }
 
-    // Pseudo-legal move generation (doesn't check whether the mover's own king ends up in
-    // check). Kept fast and used internally by the AI's deep search tree.
     function generateAllLegalMoves(color, bMatrix) {
         const list = [];
         for (let r = 0; r < SIZE; r++) for (let f = 0; f < SIZE; f++) if (bMatrix[r][f] && bMatrix[r][f].color === color) getMoves(r, f, bMatrix).forEach(t => list.push({ from: { r, f }, to: t }));
@@ -349,15 +289,21 @@ const TERRAIN_PRESETS = {
             for (let file = 0; file < SIZE; file++) {
                 const p = bMatrix[row][file];
                 if (p && p.color === enemyColor) {
-                    const moves = getMoves(row, file, bMatrix);
-                    if (moves.some(m => m.r === r && m.f === f)) return true;
+                    if (p.type === "N") {
+                        const dr = Math.abs(r - row);
+                        const df = Math.abs(f - file);
+                        if ((dr === 1 && df === 2) || (dr === 2 && df === 1)) {
+                            return true;
+                        }
+                    } else {
+                        const moves = getMoves(row, file, bMatrix);
+                        if (moves.some(m => m.r === r && m.f === f)) return true;
+                    }
                 }
             }
         }
         return false;
     }
-
-    // FIX 3: Genuine check/checkmate support -----------------------------------------
 
     function findKing(color, bMatrix) {
         for (let r = 0; r < SIZE; r++) {
@@ -371,7 +317,7 @@ const TERRAIN_PRESETS = {
 
     function isKingSafe(color, bMatrix) {
         const kp = findKing(color, bMatrix);
-        if (!kp) return true; // king missing/captured - not a "check" state
+        if (!kp) return true;
         return !isSquareAttacked(kp.r, kp.f, color, bMatrix);
     }
 
@@ -390,12 +336,8 @@ const TERRAIN_PRESETS = {
             
             let isSafe = isKingSafe(p.color, nb);
     
-            // NEW: Extra check for Castling
             if (isSafe && p.type === "K" && Math.abs(m.f - f) === 2) {
-                // Cannot start in check
                 if (isInCheck(p.color, bMatrix)) isSafe = false; 
-                
-                // Cannot pass through an attacked square
                 const passThroughFile = f + (m.f > f ? 1 : -1);
                 if (isSquareAttacked(r, passThroughFile, p.color, bMatrix)) isSafe = false; 
             }
@@ -404,9 +346,6 @@ const TERRAIN_PRESETS = {
         });
     }
     
-    // Real, legality-filtered moves for an entire side. Used for actual gameplay (human clicks,
-    // AI's final move choice) and for checkmate/stalemate detection - NOT used inside the AI's
-    // deep search tree, where the faster pseudo-legal generateAllLegalMoves is used instead.
     function computeLegalMoves(color, bMatrix) {
         const list = [];
         for (let r = 0; r < SIZE; r++) {
@@ -419,51 +358,38 @@ const TERRAIN_PRESETS = {
         return list;
     }
 
-    // ---------------------------------------------------------------------------------
-
-    /// new make move ////
     function makeMove(from, to) {
         const p = board[from.r][from.f];
         const captured = board[to.r][to.f];
-        
-        // Prepare the base move notation
         let moveString = `${p.type}${FILES[from.f]}${from.r + 1}→${FILES[to.f]}${to.r + 1}`;
     
-        // --- NEW: Castling (Rook Teleport) ---
         if (p.type === "K" && Math.abs(to.f - from.f) === 2) {
             const step = to.f > from.f ? 1 : -1;
-            
-            // Scan the file to find the rook we are castling with
             let rookFile = to.f;
             while (rookFile >= 0 && rookFile < SIZE) {
                 const rPiece = board[from.r][rookFile];
                 if (rPiece && rPiece.type === "R" && !rPiece.moved) {
-                    // Teleport the Rook to the square the King skipped over
                     board[from.r][from.f + step] = { ...rPiece, moved: true };
                     board[from.r][rookFile] = null;
                     break;
                 }
                 rookFile += step;
             }
-            // Override the log notation
             moveString = to.f > from.f ? "O-O" : "O-O-O"; 
         }
     
         board[to.r][to.f] = { ...p, moved: true };
         board[from.r][from.f] = null;
         
-        // --- NEW: Pawn Promotion (Auto-Queen) ---
         if (p.type === "P") {
             const promotionRank = p.color === "w" ? 0 : SIZE - 1;
             if (to.r === promotionRank) {
-                board[to.r][to.f].type = "Q"; // Transform into a Queen
-                moveString += "=Q";           // Append promotion to the log
+                board[to.r][to.f].type = "Q";
+                moveString += "=Q";
             }
         }
         
-        // Log Move
         moveLog.push(moveString);
-        
         lastMoveSource = { ...from };
         lastMoveTarget = { ...to };
         
@@ -477,8 +403,6 @@ const TERRAIN_PRESETS = {
     
         turn = turn === "w" ? "b" : "w"; selected = null; legalTargets = []; 
         
-        // properly detect checkmate (no legal moves + king attacked) and stalemate
-        // (no legal moves + king safe), instead of relying on illegal moves + regicide.
         const nextInCheck = isInCheck(turn, board);
         const nextLegalMoves = computeLegalMoves(turn, board);
         if (nextLegalMoves.length === 0) {
@@ -493,21 +417,17 @@ const TERRAIN_PRESETS = {
         saveState();
         render();
     
-        // Trigger AI if it's black's turn and the game is still going
         if (aiEnabled && turn === "b" && !gameOver) triggerAI();
     
         if (gameOver) {
-            // turn off the white/black indicator light
-            document.getElementById("node-w").classList.remove("active-glow");
-            document.getElementById("node-b").classList.remove("active-glow");
+            document.getElementById("node-w")?.classList.remove("active-glow");
+            document.getElementById("node-b")?.classList.remove("active-glow");
             
             const winOverlay = document.getElementById("win-overlay");
             const winTitle = document.getElementById("win-title");
             
             if (winOverlay && winTitle) {
-                // Update the text to your dynamically generated end-game message
                 winTitle.innerText = gameOverText; 
-                // Remove the 'hidden' class to display the modal
                 winOverlay.classList.remove("hidden"); 
             }
         }
@@ -522,27 +442,21 @@ const TERRAIN_PRESETS = {
                 let chosenMove = null;
 
                 try {
-                    // Attempt to get a move from the engine
                     const res = AI.findBestMove(board, aiDepth, "b", PIECE_VALUES, legalMoves, cloneBoard, isSquareAttacked, generateAllLegalMoves, aiLastMove);
                     if (res && res.move) {
                         chosenMove = res.move;
                     }
                 } catch (error) {
-                    // Catch any internal engine errors so they don't break the main thread
                     console.error("AI Engine panic/crash:", error);
                 }
 
-                // FAILSAFE: If the AI returned nothing (forced mate panic) or crashed
                 if (!chosenMove && legalMoves.length > 0) {
                     console.warn("AI failed to choose a move. Triggering random fallback.");
-                    // Pick a random legal move to prevent a softlock
                     chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
                 }
 
-                // Always unlock the UI
                 aiThinking = false; 
                 
-                // Execute the finalized move
                 if (chosenMove) {
                     aiLastMove = chosenMove;
                     makeMove(chosenMove.from, chosenMove.to);
@@ -551,39 +465,31 @@ const TERRAIN_PRESETS = {
         }, 50);
     }
 
-    // ---------------------------------------------------------------------------------
-    // CAMERA APPLICATION ENGINE (Updated)
-    // ---------------------------------------------------------------------------------
-    
-    // Extracted clamping function so both pointer and wheel events can use it
-function clampPan() {
-    const outer = document.getElementById("board-outer");
-    const boardEl = document.getElementById("board");
-    if (!outer || !boardEl) return;
+    function clampPan() {
+        const outer = document.getElementById("board-outer");
+        const boardEl = document.getElementById("board");
+        if (!outer || !boardEl) return;
 
-    const outerW = outer.offsetWidth;
-    const outerH = outer.offsetHeight;
-    
-    // Calculate full scaled board dimensions
-    const scaledW = boardEl.offsetWidth * currentScale;
-    const scaledH = boardEl.offsetHeight * currentScale;
+        const outerW = outer.offsetWidth;
+        const outerH = outer.offsetHeight;
+        
+        const scaledW = boardEl.offsetWidth * currentScale;
+        const scaledH = boardEl.offsetHeight * currentScale;
 
-    // Horizontally: clamp pan based on whether zoomed content exceeds outer container
-    if (scaledW > outerW) {
-        const minX = (outerW - scaledW) / currentScale;
-        panX = Math.min(0, Math.max(minX, panX));
-    } else {
-        panX = (outerW - scaledW) / (2 * currentScale); // Center horizontally when smaller
+        if (scaledW > outerW) {
+            const minX = (outerW - scaledW) / currentScale;
+            panX = Math.min(0, Math.max(minX, panX));
+        } else {
+            panX = (outerW - scaledW) / (2 * currentScale);
+        }
+
+        if (scaledH > outerH) {
+            const minY = (outerH - scaledH) / currentScale;
+            panY = Math.min(0, Math.max(minY, panY));
+        } else {
+            panY = (outerH - scaledH) / (2 * currentScale);
+        }
     }
-
-    // Vertically: clamp pan based on outer container height
-    if (scaledH > outerH) {
-        const minY = (outerH - scaledH) / currentScale;
-        panY = Math.min(0, Math.max(minY, panY));
-    } else {
-        panY = (outerH - scaledH) / (2 * currentScale); // Center vertically when smaller
-    }
-}
 
     function applyCameraTransform() {
         const boardEl = document.getElementById("board");
@@ -593,101 +499,10 @@ function clampPan() {
         boardEl.style.transform = `scale(${currentScale}) translate(${panX}px, ${panY}px)`;
     }
 
-    /* old
     function setupPanning() {
         const outer = document.getElementById("board-outer");
         if (!outer) return;
 
-        function getDistance(p1, p2) {
-            return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
-        }
-
-        outer.addEventListener("pointerdown", (e) => {
-            pointerCache.push(e);
-            hasDragged = false; // Reset drag state on new touch
-
-            if (pointerCache.length === 1) {
-                isPanning = true;
-                startMouseX = e.clientX;
-                startMouseY = e.clientY;
-                startPanX = panX;
-                startPanY = panY;
-                outer.setPointerCapture(e.pointerId);
-            } else if (pointerCache.length === 2) {
-                isPanning = false;
-                initialPinchDistance = getDistance(pointerCache[0], pointerCache[1]);
-            }
-        });
-
-        outer.addEventListener("pointermove", (e) => {
-            const index = pointerCache.findIndex(p => p.pointerId === e.pointerId);
-            if (index !== -1) pointerCache[index] = e;
-    
-            if (pointerCache.length === 2) {
-                hasDragged = true; // Pinching counts as dragging
-                const currentDistance = getDistance(pointerCache[0], pointerCache[1]);
-                
-                if (initialPinchDistance > 0) {
-                    const scaleDiff = currentDistance / initialPinchDistance;
-                    let newScale = currentScale * scaleDiff;
-                    
-                    currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
-                    initialPinchDistance = currentDistance; 
-                    
-                    clampPan();
-                    applyCameraTransform();
-                }
-            } else if (pointerCache.length === 1 && isPanning) {
-                // If they move the pointer more than 5 pixels, lock out the click event
-                if (Math.abs(e.clientX - startMouseX) > 5 || Math.abs(e.clientY - startMouseY) > 5) {
-                    hasDragged = true;
-                }
-                
-                panX = startPanX + (e.clientX - startMouseX) / currentScale;
-                panY = startPanY + (e.clientY - startMouseY) / currentScale;
-                
-                clampPan();
-                applyCameraTransform();
-            }
-        });
-
-        const removePointer = (e) => {
-            pointerCache = pointerCache.filter(p => p.pointerId !== e.pointerId);
-            
-            if (pointerCache.length < 2) {
-                initialPinchDistance = -1;
-            }
-            
-            if (pointerCache.length === 1) {
-                startMouseX = pointerCache[0].clientX;
-                startMouseY = pointerCache[0].clientY;
-                startPanX = panX;
-                startPanY = panY;
-                isPanning = true;
-            } else if (pointerCache.length === 0) {
-                isPanning = false;
-            }
-        };
-    
-        outer.addEventListener("pointerup", removePointer);
-        outer.addEventListener("pointercancel", removePointer);
-        outer.addEventListener("pointerout", removePointer);
-        
-        outer.addEventListener("wheel", (e) => {
-            e.preventDefault();
-            const zoomFactor = -e.deltaY * 0.002;
-            currentScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, currentScale + zoomFactor));
-            clampPan();
-            applyCameraTransform();
-        }, { passive: false });
-    }
-    */
-   
-function setupPanning() {
-        const outer = document.getElementById("board-outer");
-        if (!outer) return;
-
-        // Use an Object dictionary instead of an Array for bulletproof Android multi-touch
         const pointers = {}; 
 
         outer.addEventListener("pointerdown", (e) => {
@@ -700,7 +515,7 @@ function setupPanning() {
                 startMouseY = e.clientY;
                 startPanX = panX;
                 startPanY = panY;
-                hasDragged = false; // Reset drag state on fresh touch
+                hasDragged = false;
             } else if (keys.length === 2) {
                 isPanning = false;
                 const p1 = pointers[keys[0]];
@@ -712,13 +527,12 @@ function setupPanning() {
         outer.addEventListener("pointermove", (e) => {
             if (!pointers[e.pointerId]) return;
             
-            // Update the dictionary with fresh coordinates
             pointers[e.pointerId].x = e.clientX;
             pointers[e.pointerId].y = e.clientY;
 
             const keys = Object.keys(pointers);
             if (keys.length === 2) {
-                hasDragged = true; // Pinching counts as dragging
+                hasDragged = true;
                 const p1 = pointers[keys[0]];
                 const p2 = pointers[keys[1]];
                 const currentDistance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
@@ -734,7 +548,6 @@ function setupPanning() {
                     applyCameraTransform();
                 }
             } else if (keys.length === 1 && isPanning) {
-                // Only count as a drag if they move more than 5 pixels
                 if (Math.abs(e.clientX - startMouseX) > 5 || Math.abs(e.clientY - startMouseY) > 5) {
                     hasDragged = true;
                 }
@@ -748,7 +561,7 @@ function setupPanning() {
         });
 
         const removePointer = (e) => {
-            delete pointers[e.pointerId]; // Remove from dictionary
+            delete pointers[e.pointerId];
             
             const keys = Object.keys(pointers);
             if (keys.length < 2) {
@@ -756,7 +569,6 @@ function setupPanning() {
             }
             
             if (keys.length === 1) {
-                // If one finger stays down after a pinch, reset pan anchors
                 startMouseX = pointers[keys[0]].x;
                 startMouseY = pointers[keys[0]].y;
                 startPanX = panX;
@@ -767,7 +579,6 @@ function setupPanning() {
             }
         };
 
-        // Track all ways a pointer can leave the screen
         outer.addEventListener("pointerup", removePointer);
         outer.addEventListener("pointercancel", removePointer);
         outer.addEventListener("pointerleave", removePointer);
@@ -781,132 +592,10 @@ function setupPanning() {
         }, { passive: false });
     }
 
-    
-    function render() {
-        const container = document.getElementById("board");
-        if (!container) return;
-        container.innerHTML = "";
-        applyCameraTransform();
-        
-        for (let viewR = 0; viewR < SIZE; viewR++) {
-            for (let viewF = 0; viewF < SIZE; viewF++) {
-                const r = isFlipped ? SIZE - 1 - viewR : viewR;
-                const f = isFlipped ? SIZE - 1 - viewF : viewF;
-                
-                const cell = document.createElement("div");
-                cell.className = `cell ${(r + f) % 2 === 0 ? 'light' : 'dark'} terrain-${terrain(r, f)}`;
-                
-                if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cell.classList.add("last-move-source");
-                if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cell.classList.add("last-move-target");
-    
-                if (selected && selected.r === r && selected.f === f) {
-                    cell.classList.add("selected");
-                }
-                
-                if (legalTargets.some(t => t.r === r && t.f === f)) {
-                    const hasEnemy = board[r][f] && board[r][f].color !== turn;
-                    cell.classList.add(hasEnemy ? "legal-capture" : "legal-move");
-                }
-    
-                const p = board[r][f];
-                if (p) {
-                    const piece = document.createElement("span");
-                    piece.className = `piece ${p.color === 'w' ? 'white' : 'black'}`;
-                    piece.textContent = PIECE_SYMBOLS[p.color][p.type];
-
-                    // NEW: Make the piece immune to mouse interference 
-                piece.style.pointerEvents = "none";
-                piece.style.userSelect = "none";
-                piece.style.webkitUserDrag = "none";
-                    
-                    cell.appendChild(piece);
-                }
-                
-                cell.onclick = () => {
-                    // NEW: Ignore the click if the user was just panning/zooming the camera
-                    if (hasDragged) return; 
-    
-                    if (gameOver || aiThinking || (aiEnabled && turn === "b")) return;
-                    if (selected && legalTargets.some(t => t.r === r && t.f === f)) {
-                        makeMove(selected, {r, f});
-                    } else if (board[r][f] && board[r][f].color === turn) { 
-                        selected = {r, f}; 
-                        legalTargets = getLegalMoves(r, f, board); 
-                        render(); 
-                    } else {
-                        selected = null;
-                        legalTargets = [];
-                        render();
-                    }
-                };
-                container.appendChild(cell);
-            }
-        }
-    
-        if (isInCheck(turn, board)) {
-            for (let checkR = 0; checkR < SIZE; checkR++) {
-                for (let checkF = 0; checkF < SIZE; checkF++) {
-                    const p = board[checkR][checkF];
-                    if (p && p.type === "K" && p.color === turn) {
-                        const renderR = isFlipped ? SIZE - 1 - checkR : checkR;
-                        const renderF = isFlipped ? SIZE - 1 - checkF : checkF;
-                        const idx = renderR * SIZE + renderF;
-                        container.children[idx]?.classList.add("king-in-check");
-                    }
-                }
-            }
-        }
-        
-        const nodeW = document.getElementById("node-w");
-        const nodeB = document.getElementById("node-b");
-        if (nodeW && nodeB) {
-            nodeW.classList.toggle("active-glow", turn === 'w');
-            nodeB.classList.toggle("active-glow", turn === 'b');
-        }
-    
-        const overlay = document.getElementById("win-overlay");
-        const winTitle = document.getElementById("win-title");
-        if (overlay && winTitle) {
-            if (gameOver) {
-                winTitle.textContent = gameOverText;
-                overlay.classList.remove("hidden");
-            } else {
-                overlay.classList.add("hidden");
-            }
-        }
-    
-        renderMoveLog();
-    
-        const statusEl = document.getElementById("status-display"); 
-        if (statusEl) {
-            if (gameOver) {
-                statusEl.innerText = gameOverText;
-                statusEl.style.color = "red"; 
-            } else {
-                statusEl.innerText = turn === "w" ? "White's Turn" : "Black's Turn";
-                statusEl.style.color = "black";
-            }
-        }
-    }
-    
-   
-    // FIX 2: automatically show the 8x8 core guide whenever either side deploys "classic".
-    function syncCoreToggle() {
-        const white = document.getElementById("white-start-select")?.value;
-        const black = document.getElementById("black-start-select")?.value;
-        const toggle = document.getElementById("inner-board-toggle");
-        if (toggle && (white === "classic" || black === "classic")) {
-            toggle.checked = true;
-        }
-    }
-
-    // UI Renderers
-
     function renderMoveLog() {
         const listEl = document.getElementById("move-log-list");
         if (!listEl) return;
 
-        // --- NEW: Load Game Widget ---
         let loadWidget = document.getElementById("load-game-widget");
         if (!loadWidget) {
             loadWidget = document.createElement("div");
@@ -916,19 +605,17 @@ function setupPanning() {
             loadWidget.style.gap = "8px";
             loadWidget.style.marginBottom = "15px";
 
-            // Create the input area
             const textArea = document.createElement("textarea");
             textArea.id = "load-game-input";
             textArea.placeholder = "Paste history here (e.g. 1. Ph5→h7)...";
             textArea.rows = 4;
             textArea.style.resize = "vertical";
-            textArea.style.background = "rgba(0,0,0,0.2)"; // Blends with most UI themes
+            textArea.style.background = "rgba(0,0,0,0.2)";
             textArea.style.color = "inherit";
             textArea.style.border = "1px solid rgba(255,255,255,0.2)";
             textArea.style.padding = "8px";
             textArea.style.borderRadius = "4px";
 
-            // Create the Load button
             const loadBtn = document.createElement("button");
             loadBtn.className = "btn-ghost";
             loadBtn.textContent = "📥 Load Game";
@@ -937,16 +624,12 @@ function setupPanning() {
                 const text = textArea.value;
                 if (text.trim() === "") return;
                 
-                // 1. Reset the board to a clean state
                 document.getElementById("btn-reset").click();
                 
-                // 2. Temporarily disable the AI to prevent race conditions during the loop
                 const tempAiState = aiEnabled;
                 aiEnabled = false;
 
-                // 3. Parse text and execute moves
                 const lines = text.split('\n');
-                // Regex matches: '1. P', 'h', '5', '→', 'h', '7'
                 const regex = /\d+\.\s*[A-Z]([a-n])(\d+)→([a-n])(\d+)/;
                 
                 for (const line of lines) {
@@ -957,14 +640,12 @@ function setupPanning() {
                         const toF = FILES.indexOf(match[3]);
                         const toR = parseInt(match[4], 10) - 1;
                         
-                        // Ensure the piece exists before attempting to move it
                         if (board[fromR] && board[fromR][fromF]) {
                             makeMove({ r: fromR, f: fromF }, { r: toR, f: toF });
                         }
                     }
                 }
 
-                // 4. Clean up and restore AI state
                 textArea.value = "";
                 aiEnabled = tempAiState;
                 if (aiEnabled && turn === "b" && !gameOver) triggerAI();
@@ -975,14 +656,13 @@ function setupPanning() {
             listEl.parentNode.insertBefore(loadWidget, listEl);
         }
 
-        // --- EXISTING: Copy History Widget ---
         let copyBtn = document.getElementById("copy-history-btn");
         if (!copyBtn) {
             copyBtn = document.createElement("button");
             copyBtn.id = "copy-history-btn";
             copyBtn.className = "btn-ghost"; 
             copyBtn.textContent = "📋 Copy History";
-            copyBtn.style.marginBottom = "10px"; // Added a bit of spacing
+            copyBtn.style.marginBottom = "10px";
             copyBtn.addEventListener("click", () => {
                 const historyText = moveLog.map((move, idx) => `${idx + 1}. ${move}`).join('\n');
                 navigator.clipboard.writeText(historyText).catch(err => console.error('Failed to copy: ', err));
@@ -990,7 +670,6 @@ function setupPanning() {
             listEl.parentNode.insertBefore(copyBtn, listEl); 
         }
 
-        // --- EXISTING: Move List Generation ---
         listEl.innerHTML = "";
         moveLog.forEach((move, idx) => {
             const li = document.createElement("li");
@@ -1010,14 +689,12 @@ function setupPanning() {
         
         for (let viewR = 0; viewR < SIZE; viewR++) {
             for (let viewF = 0; viewF < SIZE; viewF++) {
-                // Determine logical board coordinates based on flip state
                 const r = isFlipped ? SIZE - 1 - viewR : viewR;
                 const f = isFlipped ? SIZE - 1 - viewF : viewF;
                 
                 const cell = document.createElement("div");
                 cell.className = `cell ${(r + f) % 2 === 0 ? 'light' : 'dark'} terrain-${terrain(r, f)}`;
                 
-                // Highlight last move targets
                 if (lastMoveSource && lastMoveSource.r === r && lastMoveSource.f === f) cell.classList.add("last-move-source");
                 if (lastMoveTarget && lastMoveTarget.r === r && lastMoveTarget.f === f) cell.classList.add("last-move-target");
 
@@ -1035,16 +712,19 @@ function setupPanning() {
                     const piece = document.createElement("span");
                     piece.className = `piece ${p.color === 'w' ? 'white' : 'black'}`;
                     piece.textContent = PIECE_SYMBOLS[p.color][p.type];
+                    piece.style.pointerEvents = "none";
+                    piece.style.userSelect = "none";
+                    piece.style.webkitUserDrag = "none";
                     cell.appendChild(piece);
                 }
                 
                 cell.onclick = () => {
+                    if (hasDragged) return; 
                     if (gameOver || aiThinking || (aiEnabled && turn === "b")) return;
                     if (selected && legalTargets.some(t => t.r === r && t.f === f)) {
                         makeMove(selected, {r, f});
                     } else if (board[r][f] && board[r][f].color === turn) { 
                         selected = {r, f}; 
-                        // FIX 3: only offer moves that don't leave your own king in check.
                         legalTargets = getLegalMoves(r, f, board); 
                         render(); 
                     } else {
@@ -1057,13 +737,11 @@ function setupPanning() {
             }
         }
 
-        // FIX 3: highlight the king that is currently in check.
         if (isInCheck(turn, board)) {
             for (let checkR = 0; checkR < SIZE; checkR++) {
                 for (let checkF = 0; checkF < SIZE; checkF++) {
                     const p = board[checkR][checkF];
                     if (p && p.type === "K" && p.color === turn) {
-                        // Match the DOM index with the flipped state
                         const renderR = isFlipped ? SIZE - 1 - checkR : checkR;
                         const renderF = isFlipped ? SIZE - 1 - checkF : checkF;
                         const idx = renderR * SIZE + renderF;
@@ -1093,45 +771,43 @@ function setupPanning() {
 
         renderMoveLog();
 
-        // for showing end of game
         const statusEl = document.getElementById("status-display"); 
-        
         if (statusEl) {
             if (gameOver) {
-                // Prominently display the checkmate/regicide text
                 statusEl.innerText = gameOverText;
-                statusEl.style.color = "red"; // Optional: make it pop
+                statusEl.style.color = "red";
             } else {
-                // Otherwise, just show the normal turn indicator
                 statusEl.innerText = turn === "w" ? "White's Turn" : "Black's Turn";
                 statusEl.style.color = "black";
             }
         }
     }
 
+    function syncCoreToggle() {
+        const white = document.getElementById("white-start-select")?.value;
+        const black = document.getElementById("black-start-select")?.value;
+        const toggle = document.getElementById("inner-board-toggle");
+        if (toggle && (white === "classic" || black === "classic")) {
+            toggle.checked = true;
+        }
+    }
+
     function init() {
         board = freshBoard();
         setupPanning();
-        
-        // NOTE: The #zoom-slider event listener has been completely removed in 
-        // favor of the multi-touch pinch mechanics and desktop mouse wheel support!
 
         document.getElementById("btn-reset")?.addEventListener("click", () => { 
             board = freshBoard(); turn = "w"; selected = null; legalTargets = []; gameOver = false;
             lastMoveSource = null; lastMoveTarget = null; history = []; moveLog = []; aiLastMove = null;
-            // Also reset camera transforms
             currentScale = 1; panX = 0; panY = 0;
             saveState(); render(); 
         });
     
         document.getElementById("btn-undo")?.addEventListener("click", () => { 
-            // If AI is on and it's our turn, we want to undo BOTH the AI's last move and our last move.
             const stepsToUndo = (aiEnabled && turn === "w") ? 2 : 1;
-            
             if (currentIndex >= stepsToUndo) {
                 jumpToTimelineIndex(currentIndex - stepsToUndo);
             } else if (currentIndex > 0) {
-                // Fallback just in case there is only 1 move in the whole history
                 jumpToTimelineIndex(currentIndex - 1);
             }
         });
@@ -1142,7 +818,6 @@ function setupPanning() {
         });
         document.getElementById("btn-another-match")?.addEventListener("click", () => { document.getElementById("btn-reset").click(); });
         
-        // Toggle Zen Mode (Maximizes board, hides menus)
         document.getElementById("btn-zen")?.addEventListener("click", () => {
             document.body.classList.toggle("zen-active");
             
@@ -1153,18 +828,14 @@ function setupPanning() {
                 zenBtn.innerHTML = "👁️ Zen";
             }
 
-            // Recalculate camera bounds and redraw for the updated container size
-                clampPan();
-                applyCameraTransform();
+            clampPan();
+            applyCameraTransform();
         });
-        
 
         document.getElementById("terrain-select")?.addEventListener("change", (e) => { currentTerrain = e.target.value; document.getElementById("btn-reset").click(); });
         document.getElementById("ai-toggle")?.addEventListener("change", (e) => { aiEnabled = e.target.checked; if (aiEnabled && turn === "b" && !gameOver) triggerAI(); });
         document.getElementById("ai-depth-select")?.addEventListener("change", (e) => { aiDepth = parseInt(e.target.value); });
 
-        // Reload the board immediately if a player changes their deployment style, and
-        // auto-enable the 8x8 core guide if either side is now "classic".
         document.getElementById("white-start-select")?.addEventListener("change", () => {
             syncCoreToggle();
             document.getElementById("btn-reset").click();
@@ -1174,7 +845,6 @@ function setupPanning() {
             document.getElementById("btn-reset").click();
         });
 
-        // reset win-overlay to hidden
         const winOverlay = document.getElementById("win-overlay");
         if (winOverlay) {
             winOverlay.classList.add("hidden");
