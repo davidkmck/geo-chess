@@ -158,16 +158,6 @@ body {
     50% { opacity: 1; }
 }
 
-/*
-.piece { 
-    font-size: 28px; 
-    cursor: grab; 
-    user-select: none; 
-    z-index: 3; 
-    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; 
-}
-*/
-
 .piece { 
     font-size: clamp(14px, 5.5vw, 28px); 
     cursor: grab; 
@@ -202,10 +192,13 @@ body:has(#inner-board-toggle:checked) .board::after {
 
 .hidden { display: none !important; }
 
-
-
-
-
+/* Full viewport & layout override when Zen Mode is triggered */
+body.zen-active {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    touch-action: none;
+}
 
 /* Hide all controls EXCEPT the Zen button itself */
 body.zen-active .game-panels,
@@ -231,6 +224,7 @@ body.zen-active .game-layout {
     height: 100vh;
     min-height: 100vh;
     justify-content: center;
+    align-items: center;
 }
 
 body.zen-active .board-container-wrapper {
@@ -238,7 +232,7 @@ body.zen-active .board-container-wrapper {
     height: 100vh;
     max-width: 100vw;
     max-height: 100vh;
-    grid-template-columns: 1fr; /* Hides left turn indicator column */
+    grid-template-columns: 1fr;
     margin: 0;
     padding: 0;
 }
@@ -247,27 +241,20 @@ body.zen-active .left-control-stack {
     display: none !important;
 }
 
-
-/* Maintain 1:1 aspect ratio in Zen mode */
 body.zen-active .board-outer {
     width: 100vw;
     height: 100vh;
+    aspect-ratio: auto;
     border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 0;
     overflow: hidden;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
 }
 
 body.zen-active .board {
-    /* Set dimensions to the largest square that fits within the viewport */
     width: min(100vw, 100vh);
     height: min(100vw, 100vh);
     aspect-ratio: 1 / 1;
-    position: relative; /* Shifted from absolute so it centers cleanly */
+    position: absolute;
+    top: 0;
+    left: 0;
 }
-
