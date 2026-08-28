@@ -465,31 +465,35 @@
         }, 50);
     }
 
-    function clampPan() {
-        const outer = document.getElementById("board-outer");
-        const boardEl = document.getElementById("board");
-        if (!outer || !boardEl) return;
+ function clampPan() {
+    const outer = document.getElementById("board-outer");
+    const boardEl = document.getElementById("board");
+    if (!outer || !boardEl) return;
 
-        const outerW = outer.offsetWidth;
-        const outerH = outer.offsetHeight;
-        
-        const scaledW = boardEl.offsetWidth * currentScale;
-        const scaledH = boardEl.offsetHeight * currentScale;
+    const outerW = outer.offsetWidth;
+    const outerH = outer.offsetHeight;
+    
+    // Get actual pixel size of the square board element
+    const boardSize = boardEl.offsetWidth;
+    const scaledW = boardSize * currentScale;
+    const scaledH = boardSize * currentScale;
 
-        if (scaledW > outerW) {
-            const minX = (outerW - scaledW) / currentScale;
-            panX = Math.min(0, Math.max(minX, panX));
-        } else {
-            panX = (outerW - scaledW) / (2 * currentScale);
-        }
-
-        if (scaledH > outerH) {
-            const minY = (outerH - scaledH) / currentScale;
-            panY = Math.min(0, Math.max(minY, panY));
-        } else {
-            panY = (outerH - scaledH) / (2 * currentScale);
-        }
+    // Horizontally: clamp pan or center if smaller than outer container
+    if (scaledW > outerW) {
+        const minX = (outerW - scaledW) / currentScale;
+        panX = Math.min(0, Math.max(minX, panX));
+    } else {
+        panX = (outerW - scaledW) / (2 * currentScale);
     }
+
+    // Vertically: clamp pan or center if smaller than outer container
+    if (scaledH > outerH) {
+        const minY = (outerH - scaledH) / currentScale;
+        panY = Math.min(0, Math.max(minY, panY));
+    } else {
+        panY = (outerH - scaledH) / (2 * currentScale);
+    }
+}
 
     function applyCameraTransform() {
         const boardEl = document.getElementById("board");
