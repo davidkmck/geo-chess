@@ -247,13 +247,27 @@ body.zen-active .left-control-stack {
     display: none !important;
 }
 
+
+/* Maintain 1:1 aspect ratio in Zen mode */
 body.zen-active .board-outer {
     width: 100vw;
     height: 100vh;
-    aspect-ratio: auto; /* Removes square aspect-ratio constraint */
     border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
 }
+
+body.zen-active .board {
+    /* Set dimensions to the largest square that fits within the viewport */
+    width: min(100vw, 100vh);
+    height: min(100vw, 100vh);
+    aspect-ratio: 1 / 1;
+    position: relative; /* Shifted from absolute so it centers cleanly */
+}
+
