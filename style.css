@@ -188,6 +188,7 @@ body:has(#inner-board-toggle:checked) .board::after {
 
 .hidden { display: none !important; }
 
+/* Full viewport & layout override when Zen Mode is triggered */
 body.zen-active {
     padding: 0;
     margin: 0;
@@ -195,6 +196,7 @@ body.zen-active {
     touch-action: none;
 }
 
+/* Hide all controls EXCEPT the Zen button itself */
 body.zen-active .game-panels,
 body.zen-active .controls-header #btn-reset,
 body.zen-active .controls-header #btn-flip,
@@ -202,6 +204,7 @@ body.zen-active .controls-header h1 {
     display: none !important;
 }
 
+/* Float the Zen toggle over the top-left of the board */
 body.zen-active .controls-header {
     position: absolute;
     top: 10px;
@@ -216,6 +219,8 @@ body.zen-active .game-layout {
     width: 100vw;
     height: 100vh;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
 }
@@ -228,6 +233,9 @@ body.zen-active .board-container-wrapper {
     grid-template-columns: 1fr;
     margin: 0;
     padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 body.zen-active .left-control-stack {
