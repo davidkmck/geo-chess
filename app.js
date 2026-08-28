@@ -112,7 +112,9 @@
         return map[char] || "plain";
     }
 
-    function isImpassable(t) { return t === "mountain"; }
+function isImpassable(t) { 
+    return t === "mountain" || t === "lake"; 
+}
     function isWater(t) { return t === "river" || t === "lake"; }
     function isForest(t) { return t === "forest"; }
 
