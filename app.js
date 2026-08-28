@@ -115,10 +115,15 @@
     function isImpassable(t) { return t === "mountain"; }
     function isWater(t) { return t === "river" || t === "lake"; }
     function isForest(t) { return t === "forest"; }
+
+    
     function canCapture(tFrom, tTo) {
+        // Water to Land is forbidden (Water to Water is allowed)
         if (isWater(tFrom) && !isWater(tTo)) return false;
-        if (isWater(tFrom) && isWater(tTo)) return false;
+        
+        // Outside to Forest is forbidden (Forest to Forest is allowed)
         if (!isForest(tFrom) && isForest(tTo)) return false;
+        
         return true;
     }
 
@@ -192,91 +197,110 @@
         if (btnRedo) btnRedo.disabled = currentIndex >= history.length - 1;
     }
 
-    function getMoves(r, f, bMatrix) {
-        const p = bMatrix[r][f];
-        if (!p) return [];
-        const moves = [], tFrom = terrain(r, f);
-        const D = { R: [[1,0], [-1,0], [0,1], [0,-1]], B: [[1,1], [1,-1], [-1,1], [-1,-1]], Q: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]], K: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]], N: [[2,1], [2,-1], [-2,1], [-2,-1], [1,2], [1,-2], [-1,2], [-1,-2]] };
+    function canCapture(tFrom, tTo) {
+    // Water to Land is forbidden (Water to Water is allowed)
+    if (isWater(tFrom) && !isWater(tTo)) return false;
+    
+    // Outside to Forest is forbidden (Forest to Forest is allowed)
+    if (!isForest(tFrom) && isForest(tTo)) return false;
+    
+    return true;
+}
 
-        if (p.type === "P") {
-            const dir = p.color === "w" ? -1 : 1;
-            const nr = r + dir;
-            if (nr >= 0 && nr < SIZE && !bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
-                moves.push({ r: nr, f: f });
-                if (!p.moved && !bMatrix[r + (2 * dir)][f] && !isImpassable(terrain(r + (2 * dir), f))) {
-                    moves.push({ r: r + (2 * dir), f: f });
+function getMoves(r, f, bMatrix) {
+    const p = bMatrix[r][f];
+    if (!p) return [];
+    const moves = [], tFrom = terrain(r, f);
+    const D = { 
+        R: [[1,0], [-1,0], [0,1], [0,-1]], 
+        B: [[1,1], [1,-1], [-1,1], [-1,-1]], 
+        Q: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]], 
+        K: [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]], 
+        N: [[2,1], [2,-1], [-2,1], [-2,-1], [1,2], [1,-2], [-1,2], [-1,-2]] 
+    };
+
+    if (p.type === "P") {
+        const dir = p.color === "w" ? -1 : 1;
+        const nr = r + dir;
+        if (nr >= 0 && nr < SIZE && !bMatrix[nr][f] && !isImpassable(terrain(nr, f))) {
+            moves.push({ r: nr, f: f });
+            if (!p.moved && !bMatrix[r + (2 * dir)][f] && !isImpassable(terrain(r + (2 * dir), f))) {
+                moves.push({ r: r + (2 * dir), f: f });
+            }
+        }
+        [f - 1, f + 1].forEach(nf => {
+            if (nf >= 0 && nf < SIZE && r + dir >= 0 && r + dir < SIZE) {
+                const tTo = terrain(r + dir, nf), tgt = bMatrix[r + dir][nf];
+                if (tgt && tgt.color !== p.color && !isImpassable(tTo) && canCapture(tFrom, tTo)) {
+                    moves.push({ r: r + dir, f: nf });
                 }
             }
-            [f - 1, f + 1].forEach(nf => {
-                if (nf >= 0 && nf < SIZE && r + dir >= 0 && r + dir < SIZE) {
-                    const tTo = terrain(r + dir, nf), tgt = bMatrix[r + dir][nf];
-                    if (tgt && tgt.color !== p.color && !isImpassable(tTo) && canCapture(tFrom, tTo)) moves.push({ r: r + dir, f: nf });
-                }
-            });
-        } else if (["R", "B", "Q"].includes(p.type)) {
-            D[p.type].forEach(([dr, df]) => {
-                let cr = r + dr, cf = f + df;
-                while (cr >= 0 && cr < SIZE && cf >= 0 && cf < SIZE) {
-                    const tTo = terrain(cr, cf);
-                    if (isImpassable(tTo)) break;
-                    
-                    const tgt = bMatrix[cr][cf];
-                    if (!tgt) { 
+        });
+    } else if (["R", "B", "Q"].includes(p.type)) {
+        D[p.type].forEach(([dr, df]) => {
+            let cr = r + dr, cf = f + df;
+            while (cr >= 0 && cr < SIZE && cf >= 0 && cf < SIZE) {
+                const tTo = terrain(cr, cf);
+                if (isImpassable(tTo)) break;
+                
+                const tgt = bMatrix[cr][cf];
+                if (!tgt) { 
+                    moves.push({ r: cr, f: cf }); 
+                } else { 
+                    if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
                         moves.push({ r: cr, f: cf }); 
-                    } else { 
-                        if (tgt.color !== p.color && canCapture(tFrom, tTo)) {
-                            moves.push({ r: cr, f: cf }); 
-                        }
-                        break;
                     }
-                    
-                    if (isForest(tTo) || isWater(tTo) || isWater(tFrom)) break;
-
-                    cr += dr; cf += df;
+                    break; // Stop sliding ray on piece collision
                 }
-            });
-        } else if (["N", "K"].includes(p.type)) {
-            D[p.type].forEach(([dr, df]) => {
-                const nr = r + dr, nf = f + df;
-                if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
-                    const tTo = terrain(nr, nf);
-                    if (!isImpassable(tTo)) {
-                        const tgt = bMatrix[nr][nf];
-                        if (!tgt || (tgt.color !== p.color && canCapture(tFrom, tTo))) {
-                            moves.push({ r: nr, f: nf });
-                        }
+                
+                // Stop sliding rays when crossing out of water or entering forest from open terrain
+                if ((isWater(tFrom) && !isWater(tTo)) || (!isForest(tFrom) && isForest(tTo))) break;
+
+                cr += dr; cf += df;
+            }
+        });
+    } else if (["N", "K"].includes(p.type)) {
+        D[p.type].forEach(([dr, df]) => {
+            const nr = r + dr, nf = f + df;
+            if (nr >= 0 && nr < SIZE && nf >= 0 && nf < SIZE) {
+                const tTo = terrain(nr, nf);
+                if (!isImpassable(tTo)) {
+                    const tgt = bMatrix[nr][nf];
+                    if (!tgt || (tgt.color !== p.color && canCapture(tFrom, tTo))) {
+                        moves.push({ r: nr, f: nf });
                     }
                 }
+            }
 
-                if (p.type === "K" && !p.moved) {
-                    [1, -1].forEach(step => {
-                        let pathClear = true;
-                        let foundRook = false;
-                        for (let x = f + step; x >= 0 && x < SIZE; x += step) {
-                            const sq = bMatrix[r][x];
-                            if (isImpassable(terrain(r, x))) {
+            if (p.type === "K" && !p.moved) {
+                [1, -1].forEach(step => {
+                    let pathClear = true;
+                    let foundRook = false;
+                    for (let x = f + step; x >= 0 && x < SIZE; x += step) {
+                        const sq = bMatrix[r][x];
+                        if (isImpassable(terrain(r, x))) {
+                            pathClear = false;
+                            break;
+                        }
+                        if (sq) {
+                            if (sq.type === "R" && !sq.moved && sq.color === p.color) {
+                                foundRook = true;
+                            } else {
                                 pathClear = false;
-                                break;
                             }
-                            if (sq) {
-                                if (sq.type === "R" && !sq.moved && sq.color === p.color) {
-                                    foundRook = true;
-                                } else {
-                                    pathClear = false;
-                                }
-                                break; 
-                            }
+                            break; 
                         }
-                        if (pathClear && foundRook) {
-                            moves.push({ r: r, f: f + (2 * step) });
-                        }
-                    });
-                }
-            });
-        }
-        return moves;
+                    }
+                    if (pathClear && foundRook) {
+                        moves.push({ r: r, f: f + (2 * step) });
+                    }
+                });
+            }
+        });
     }
-
+    return moves;
+}
+    
     function generateAllLegalMoves(color, bMatrix) {
         const list = [];
         for (let r = 0; r < SIZE; r++) for (let f = 0; f < SIZE; f++) if (bMatrix[r][f] && bMatrix[r][f].color === color) getMoves(r, f, bMatrix).forEach(t => list.push({ from: { r, f }, to: t }));
