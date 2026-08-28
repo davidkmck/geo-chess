@@ -157,7 +157,7 @@ body {
     font-size: clamp(14px, 5.5vw, 28px); 
     cursor: grab; 
     user-select: none; 
-    pointer-events: auto;
+    pointer-events: none;
     -webkit-user-drag: none; 
     z-index: 3; 
     font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; 
