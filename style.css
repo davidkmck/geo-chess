@@ -219,3 +219,31 @@ body.zen-active .board-container-wrapper {
 body.zen-active .game-layout {
     padding: 5px; 
 }
+
+/* Ensure the body and outer wrapper can expand edge-to-edge in Zen mode */
+body.zen-mode {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    touch-action: none;
+}
+
+/* Allow the board outer wrapper to fill 100% of the viewport */
+body.zen-mode .board-container-wrapper {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    padding: 0;
+    margin: 0;
+    overflow: auto; /* Allows panning/zooming across the whole board */
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Optional: Support notch/home indicator areas on mobile */
+body.zen-mode .board-outer {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
