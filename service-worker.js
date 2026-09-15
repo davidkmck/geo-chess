@@ -1,4 +1,4 @@
-const CACHE_NAME = 'topos-chess-v27';
+const CACHE_NAME = 'topos-chess-v28';
 const ASSETS = [
   './',
   './index.html',
