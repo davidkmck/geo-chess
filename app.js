@@ -857,8 +857,17 @@
         }
 
         window.addEventListener("resize", () => {
-            clampPan();
-            applyCameraTransform();
+            setTimeout(() => {
+                clampPan();
+                applyCameraTransform();
+            }, 150);
+        });
+        
+        window.addEventListener("orientationchange", () => {
+            setTimeout(() => {
+                clampPan();
+                applyCameraTransform();
+            }, 150);
         });
 
         syncCoreToggle();
