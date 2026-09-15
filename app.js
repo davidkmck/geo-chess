@@ -856,6 +856,11 @@
             winOverlay.classList.add("hidden");
         }
 
+        window.addEventListener("resize", () => {
+            clampPan();
+            applyCameraTransform();
+        });
+
         syncCoreToggle();
         saveState();
         render();
