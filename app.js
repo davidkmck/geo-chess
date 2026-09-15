@@ -870,6 +870,14 @@
             }, 150);
         });
 
+        const outerContainer = document.getElementById("board-outer");
+        if (outerContainer) {
+            new ResizeObserver(() => {
+                clampPan();
+                applyCameraTransform();
+            }).observe(outerContainer);
+        }
+
         syncCoreToggle();
         saveState();
         render();
