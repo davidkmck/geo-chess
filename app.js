@@ -521,7 +521,8 @@
                 startPanX = panX;
                 startPanY = panY;
                 hasDragged = false;
-                try { outer.setPointerCapture(e.pointerId); } catch (err) {}
+                // DISABLED TO ALLOW CHILD CLICKS ON DESKTOP:
+                // try { outer.setPointerCapture(e.pointerId); } catch (err) {}
             } else if (keys.length === 2) {
                 isPanning = false;
                 const p1 = pointers[keys[0]];
@@ -567,7 +568,8 @@
         });
 
         const removePointer = (e) => {
-            try { outer.releasePointerCapture(e.pointerId); } catch (err) {}
+            // DISABLED TO ALLOW CHILD CLICKS ON DESKTOP:
+            // try { outer.releasePointerCapture(e.pointerId); } catch (err) {}
             delete pointers[e.pointerId];
             
             const keys = Object.keys(pointers);
